@@ -135,6 +135,14 @@ If an incompatible change is unavoidable, publish a migration proposal covering 
 
 Keep the production origin, repository, article IDs and identity signing secret stable. Back up the signing secret securely: changing it makes existing signed comments unreadable and requires a migration plan. App private keys and client secrets may rotate independently of the data format. A domain or repository move also requires an explicit migration rather than starting over silently.
 
+## Multiple websites
+
+One operator may reuse their GitHub App across several websites. Deploy one Worker per website, with its own `REPORELAY_SITE_ORIGIN`, session signing secret and identity signing secret. App IDs and App credentials may be shared by Workers under the same operator. Each repository must be included in the App installation; use the appropriate installation ID when accounts differ. Workers using the same repository still have separate discussion collections because their origins differ.
+
+Register each site's exact `https://<site>/api/comments/callback` in the App. RepoRelay explicitly sends that site's `redirect_uri` and rejects authorization callbacks and submissions on a different origin. GitHub permits [up to ten callback URLs per App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/about-the-user-authorization-callback-url). Additional Apps can serve more sites. Other operators register their own Apps and host their own Workers.
+
+Do not bind several unrelated website domains to a Worker configured for one origin: each instance accepts its configured origin only. Discussion collections are separate by default; sharing discussions between websites would require an explicit separate design.
+
 Deleting a comment removes it from the discussion, but does not delete its stored image objects or copies already cached by a visitor. Image responses are publicly cacheable for a year. The current read endpoint returns at most 500 comments; pagination is not yet part of this release.
 
 ## Private-content example
