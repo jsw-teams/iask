@@ -12,7 +12,7 @@ The first application is the article discussion system on [JS.GRIPE](https://js.
 - Verified GitHub identity, PKCE, same-origin requests, CSRF and signed comment metadata.
 - PNG, JPEG, GIF, WebP and AVIF attachments: four per comment, five million bytes per file.
 - Signed upload receipts tied to the uploading visitor and article.
-- A Durable Object per repository, namespace and article to serialize first comments and persist the Issue number.
+- A Durable Object per project and article to serialize first comments and persist the Issue number.
 - Moderation through GitHub: delete a comment, close/lock a thread, or delete an Issue to start a replacement on the next submission.
 - A server-only file client restricted to one configured repository, with read-only installation tokens by default.
 
@@ -32,7 +32,7 @@ npm pack --dry-run
 For an application, install from GitHub and commit the resulting lockfile. Use a specific commit for reproducible deployments; this package is not currently published to npm.
 
 ```sh
-npm install github:jsw-teams/RepoRelay#v0.2.1
+npm install github:jsw-teams/RepoRelay#202610.1
 ```
 
 ## Register and install a GitHub App
@@ -53,7 +53,7 @@ The installation ID is the number in the installation settings URL. The bot logi
 
 ## Configure a comment Worker
 
-Start from [examples/comments/wrangler.jsonc](examples/comments/wrangler.jsonc). Replace its IDs, repository, origin and namespace. Deploy a Worker that exports `CommentCoordinator`, and bind `REPORELAY_THREADS` to it with a SQLite Durable Object migration. The [Cloudflare Durable Objects guide](https://developers.cloudflare.com/durable-objects/get-started/) describes these bindings.
+Start from [examples/comments/wrangler.jsonc](examples/comments/wrangler.jsonc). Replace its IDs, repository and origin. Deploy a Worker that exports `CommentCoordinator`, and bind `REPORELAY_THREADS` to it with a SQLite Durable Object migration. The [Cloudflare Durable Objects guide](https://developers.cloudflare.com/durable-objects/get-started/) describes these bindings.
 
 ```js
 import { handleCommentRequest } from '@jsw-teams/reporelay';
@@ -70,7 +70,6 @@ Required variables:
 
 ```text
 REPORELAY_REPOSITORY=owner/private-repository
-REPORELAY_NAMESPACE=production-v2
 REPORELAY_SITE_ORIGIN=https://comments.example.com
 REPORELAY_GITHUB_APP_ID=<App ID>
 REPORELAY_GITHUB_APP_INSTALLATION_ID=<Installation ID>
@@ -107,7 +106,7 @@ Generate this allowlist from published articles. Visitors cannot register arbitr
 | `GET /api/comments/session` | Read visitor identity and CSRF token |
 | `POST /api/comments/logout` | Clear the session |
 | `POST /api/comments/media/` | Upload image bytes |
-| `GET /api/comments/media/<namespace>/<hash>/<file>` | Read a published image |
+| `GET /api/comments/media/<project>/<hash>/<file>` | Read a published image |
 | `POST /api/comments` | Submit a comment |
 
 Every write requires the website Origin, session cookie and `X-Comments-CSRF`. Uploads additionally require `X-Comments-Thread` and an image Content-Type. Retain the returned `url` and `receipt`; submit them together:
@@ -120,11 +119,21 @@ Comments accept 5,000 characters and may contain images without text. Upload rec
 
 Closing or locking an Issue also blocks uploads. Deleted Issue recovery checks repository access before creating a replacement. An ambiguous comment write is never retried automatically. An ambiguous Issue creation stays pending until a matching Issue appears in GitHub search; it does not risk a duplicate. If GitHub did not create that Issue, an operator must resolve the object's `creating` flag before retrying.
 
-## Fresh data only
+## Data isolation
 
-Protocol v2 deliberately has no OAuth App/PAT fallback or legacy session, thread, comment, media or draft migration. Only `REPORELAY_*` configuration is read. Session cookies end in `_v2`, signed values bind the namespace, and Issue markers include `reporelay-thread:v2:<namespace>:<hash>`.
+The repository and configured site origin determine the project’s data scope automatically. No extra label is needed. Release updates and App credential rotation keep that scope stable; a different repository or origin uses a separate collection. Existing unrelated test Issues are not imported. Invalid relay metadata is excluded; ordinary maintainer replies remain visible.
 
-Choose distinct production and test namespaces. Changing the namespace starts a separate discussion collection. Keep old test Issues and media separate; do not relabel or import them. Invalid or older relay comment metadata is excluded from results. Ordinary maintainer replies in a valid v2 Issue remain visible.
+Release labels use the year and month followed by the update number within that month, for example `202610.1`. The npm package records the same release as `202610.1.0` to satisfy its package version format. Release labels are independent of stored comment identifiers.
+
+## Compatibility and data lifecycle
+
+This initial release establishes the supported data format; earlier experimental data is not imported. Future updates must continue reading formal production data. Existing data formats have no automatic removal deadline.
+
+The storage contract uses a stable `reporelay-thread:<project>:<article-hash>` Issue marker and signed `reporelay-comment` records containing `format: 1`, identity, article, body and attachment URLs. The format number is internal to stored data and independent of release numbering. Readers ignore unsupported formats without deleting the upstream records. Additive fields must not change existing meaning; future readers must retain support for established formats.
+
+If an incompatible change is unavoidable, publish a migration proposal covering affected fields, verification, backup and rollback before adopting it. Migration must be explicit. Unmigrated records remain retained and isolated; they must not be silently interpreted as the new format. Deprecating an API or feature does not authorize deleting its stored data.
+
+Keep the production origin, repository, article IDs and identity signing secret stable. Back up the signing secret securely: changing it makes existing signed comments unreadable and requires a migration plan. App private keys and client secrets may rotate independently of the data format. A domain or repository move also requires an explicit migration rather than starting over silently.
 
 Deleting a comment removes it from the discussion, but does not delete its stored image objects or copies already cached by a visitor. Image responses are publicly cacheable for a year. The current read endpoint returns at most 500 comments; pagination is not yet part of this release.
 

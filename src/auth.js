@@ -1,5 +1,6 @@
-const SESSION = '__Host-reporelay_session_v2';
-const STATE = '__Host-reporelay_oauth_v2';
+import { dataScope } from './scope.js';
+const SESSION = '__Host-reporelay_session';
+const STATE = '__Host-reporelay_oauth';
 const encoder = new TextEncoder();
 const response = (data, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 const bytes64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -23,7 +24,7 @@ export function authReady(env) {
   const connect = connectConfig(env);
   return typeof env.REPORELAY_SESSION_SECRET === 'string' && env.REPORELAY_SESSION_SECRET.length >= 32 &&
     typeof env.REPORELAY_IDENTITY_SECRET === 'string' && env.REPORELAY_IDENTITY_SECRET.length >= 32 &&
-    /^[a-z0-9][a-z0-9-]{0,63}$/.test(env.REPORELAY_NAMESPACE || '') && !!connect.origin && !!connect.clientId && !!connect.clientSecret;
+    /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(env.REPORELAY_REPOSITORY || '') && !!connect.origin && !!connect.clientId && !!connect.clientSecret;
 }
 async function key(env, purpose) {
   const secret = purpose === 'comment' ? env.REPORELAY_IDENTITY_SECRET : env.REPORELAY_SESSION_SECRET;
@@ -31,7 +32,7 @@ async function key(env, purpose) {
 }
 export async function signValue(value, env, purpose) {
   const payload = bytes64(encoder.encode(JSON.stringify(value)));
-  const signature = bytes64(new Uint8Array(await crypto.subtle.sign('HMAC', await key(env, purpose), encoder.encode('reporelay:v2:' + env.REPORELAY_NAMESPACE + ':' + purpose + ':' + payload))));
+  const signature = bytes64(new Uint8Array(await crypto.subtle.sign('HMAC', await key(env, purpose), encoder.encode('reporelay:' + await dataScope(env) + ':' + purpose + ':' + payload))));
   return payload + '.' + signature;
 }
 export async function verifyValue(value, env, purpose) {
@@ -40,7 +41,7 @@ export async function verifyValue(value, env, purpose) {
     if (typeof value !== 'string' || value.length > (purpose === 'comment' ? 32000 : 2048) || typeof secret !== 'string' || secret.length < 32) return null;
     const parts = value.split('.');
     if (parts.length !== 2 || !parts.every(p => /^[A-Za-z0-9_-]+$/.test(p))) return null;
-    if (!await crypto.subtle.verify('HMAC', await key(env, purpose), un64(parts[1]), encoder.encode('reporelay:v2:' + env.REPORELAY_NAMESPACE + ':' + purpose + ':' + parts[0]))) return null;
+    if (!await crypto.subtle.verify('HMAC', await key(env, purpose), un64(parts[1]), encoder.encode('reporelay:' + await dataScope(env) + ':' + purpose + ':' + parts[0]))) return null;
     return JSON.parse(new TextDecoder().decode(un64(parts[0])));
   } catch { return null; }
 }
@@ -123,7 +124,7 @@ export async function handleCommentAuth(request, env) {
     const token = await exchange.json();
     if (!exchange.ok || token.error || typeof token.access_token !== 'string') throw new Error('Token exchange failed');
     const profile = await fetch('https://api.github.com/user', { redirect: 'manual', headers: {
-      Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + token.access_token, 'User-Agent': 'RepoRelay/0.1', 'X-GitHub-Api-Version': '2026-03-10' } });
+      Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + token.access_token, 'User-Agent': 'RepoRelay', 'X-GitHub-Api-Version': '2026-03-10' } });
     const user = await profile.json();
     if (!profile.ok || !Number.isSafeInteger(user.id) || user.id <= 0 || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(user.login)) throw new Error('Invalid GitHub identity');
     const session = await signValue({ id: user.id, login: user.login, csrf: random(), exp: Date.now() + 86400000 }, env, 'session');

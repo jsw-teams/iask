@@ -3,7 +3,6 @@ import { handleCommentRequest } from '../src/index.js';
 const pair = await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5', modulusLength:2048,
   publicExponent:new Uint8Array([1,0,1]), hash:'SHA-256'}, true, ['sign','verify']);
 export const appDefaults = {
-  REPORELAY_NAMESPACE: 'test-v2',
   REPORELAY_GITHUB_APP_ID: '60001',
   REPORELAY_GITHUB_APP_INSTALLATION_ID: '70001',
   REPORELAY_GITHUB_APP_BOT_LOGIN: 'comment-bot[bot]',

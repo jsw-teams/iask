@@ -1,3 +1,5 @@
+import { dataScope } from '../src/scope.js';
+const scope = await dataScope({REPORELAY_SITE_ORIGIN:'https://js.gripe',REPORELAY_REPOSITORY:'jsw-teams/web'});
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleCommentRequest, CommentCoordinator, createRepositoryClient } from '../src/index.js';
@@ -7,7 +9,7 @@ import { appDefaults, mockInstallation } from './helpers.mjs';
 const origin = 'https://js.gripe';
 const png = Uint8Array.from([137,80,78,71,13,10,26,10,0,0,0,0]);
 async function fixture(run, override = () => null) {
-  const thread = 'v2-' + crypto.randomUUID();
+  const thread = 'article-' + crypto.randomUUID();
   const hash = Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(thread))).subarray(0,12).toString('hex');
   const env = {...appDefaults, REPORELAY_REPOSITORY:'jsw-teams/web', REPORELAY_SITE_ORIGIN:origin,
     REPORELAY_GITHUB_APP_CLIENT_ID:'app', REPORELAY_GITHUB_APP_CLIENT_SECRET:'secret',
@@ -17,8 +19,8 @@ async function fixture(run, override = () => null) {
   const storage = {get:async key=>values.get(key),put:async(key,value)=>values.set(key,value),delete:async key=>values.delete(key)};
   let object = new CommentCoordinator({storage},env);
   env.REPORELAY_THREADS = {idFromName:name=>name,get:()=>({fetch:request=>object.fetch(request)})};
-  const cookie = '__Host-reporelay_session_v2=' + await signValue({id:17,login:'Reader',csrf:'csrf',exp:Date.now()+600000},env,'session');
-  const issue = {number:42,state:'open',locked:false,title:'💬 Article',body:'<!-- reporelay-thread:v2:test-v2:'+hash+' -->',labels:['comments','reporelay']};
+  const cookie = '__Host-reporelay_session=' + await signValue({id:17,login:'Reader',csrf:'csrf',exp:Date.now()+600000},env,'session');
+  const issue = {number:42,state:'open',locked:false,title:'💬 Article',body:'<!-- reporelay-thread:' + scope + ':'+hash+' -->',labels:['comments','reporelay']};
   const calls = [];
   const saved = globalThis.fetch;
   globalThis.fetch = async(url,init={}) => {
@@ -49,18 +51,18 @@ async function fixture(run, override = () => null) {
   finally {globalThis.fetch=saved;}
 }
 
-test('old configuration and sessions are rejected; signatures bind the data namespace', async()=>{
+test('old configuration and sessions are rejected; signatures bind the project configuration', async()=>{
   await fixture(async({env,cookie})=>{
     const legacy = {...env, REPORELAY_GITHUB_APP_PRIVATE_KEY:undefined,COMMENTS_GITHUB_TOKEN:'old-pat'};
     assert.equal((await handleCommentRequest(new Request(origin+'/api/comments?thread=article'),legacy)).status,503);
-    assert.equal(await commentSession(new Request(origin,{headers:{cookie:cookie.replace('__Host-reporelay_session_v2','__Host-edgepress_session')}}),env),null);
-    assert.equal(await commentSession(new Request(origin,{headers:{cookie:cookie.replace('__Host-reporelay_session_v2','__Host-reporelay_session')}}),env),null);
+    assert.equal(await commentSession(new Request(origin,{headers:{cookie:cookie.replace('__Host-reporelay_session','__Host-edgepress_session')}}),env),null);
+    assert.equal(await commentSession(new Request(origin,{headers:{cookie:cookie.replace('__Host-reporelay_session','__Host-reporelay_session_v2')}}),env),null);
     const signed=await signValue({value:1},env,'comment');
-    assert.equal(await verifyValue(signed,{...env,REPORELAY_NAMESPACE:'old-tests'},'comment'),null);
+    assert.equal(await verifyValue(signed,{...env,REPORELAY_SITE_ORIGIN:'https://test.example'},'comment'),null);
   });
 });
 
-test('legacy and another namespace Issues never appear or get reused',async()=>{
+test('legacy and another project Issues never appear or get reused',async()=>{
   await fixture(async({get,post,calls})=>{
     assert.deepEqual(await(await get()).json(),{comments:[],closed:false});
     assert.equal((await post()).status,201);
@@ -105,10 +107,10 @@ test('anonymous or unpublished reads never call GitHub for unknown articles',asy
 test('media upload and image-only comments use a signed receipt',async()=>{
   await fixture(async({upload,post,calls})=>{
     const response=await upload(); assert.equal(response.status,201);
-    const media=await response.json(); assert.match(media.url,/\/test-v2\//);
+    const media=await response.json(); assert.match(media.url,new RegExp('/' + scope + '/'));
     assert.equal((await post({body:'',attachments:[media]})).status,201);
     const write=calls.find(c=>c.method==='PUT');
-    assert.equal(JSON.parse(write.init.body).branch,'reporelay-media-test-v2');
+    assert.equal(JSON.parse(write.init.body).branch,'reporelay-media-' + scope);
   });
 });
 
@@ -118,7 +120,7 @@ test('media rejects forged bytes, oversized files, wrong CSRF and another user r
     assert.equal((await upload(png,{'content-length':'5000001'})).status,413);
     assert.equal((await upload(png,{'x-comments-csrf':'wrong'})).status,403);
     assert.equal(calls.length,0);
-    const url=origin+'/api/comments/media/test-v2/'+hash+'/'+crypto.randomUUID()+'.png';
+    const url=origin+'/api/comments/media/' + scope + '/'+hash+'/'+crypto.randomUUID()+'.png';
     const receipt=await signValue({url,thread,id:99,exp:Date.now()+60000},env,'media');
     assert.equal((await post({body:'Hello',attachments:[{url,receipt}]})).status,400);
     assert.equal((await post({body:'Hello',attachments:[url]})).status,400);
@@ -136,7 +138,7 @@ test('closing a thread also prevents media uploads',async()=>{
 
 test('media replies validate bytes and set image MIME without forwarding cookies',async()=>{
   await fixture(async({env,hash})=>{
-    const response=await handleCommentRequest(new Request(origin+'/api/comments/media/test-v2/'+hash+'/'+crypto.randomUUID()+'.png'),env);
+    const response=await handleCommentRequest(new Request(origin+'/api/comments/media/' + scope + '/'+hash+'/'+crypto.randomUUID()+'.png'),env);
     assert.equal(response.status,200);
     assert.equal(response.headers.get('content-type'),'image/png');
     assert.equal(response.headers.get('set-cookie'),null);
@@ -165,7 +167,7 @@ test('server-side file reads stay in the configured repository and reject traver
 test('another operator uses their own callback, cookie and project return address',async()=>{
   await fixture(async({env})=>{
     const ownOrigin='https://independent-operator.example';
-    const ownEnv={...env,REPORELAY_SITE_ORIGIN:ownOrigin,REPORELAY_NAMESPACE:'independent-production'};
+    const ownEnv={...env,REPORELAY_SITE_ORIGIN:ownOrigin};
     const response=await handleCommentRequest(new Request(ownOrigin+'/api/comments/login?return=%2Fproject%2Farticle%2F%23comments'),ownEnv);
     assert.equal(response.status,303);
     const target=new URL(response.headers.get('location'));
@@ -175,5 +177,37 @@ test('another operator uses their own callback, cookie and project return addres
     assert.equal(state.returnTo,'/project/article/#comments');
     assert.equal(await verifyValue(pendingCookie,env,'oauth'),null);
     assert.ok(!response.headers.get('location').includes('js.gripe'));
+  });
+});
+
+test('project scope is stable across releases and App key rotation, but separates origins and repositories',async()=>{
+  const env={REPORELAY_SITE_ORIGIN:origin,REPORELAY_REPOSITORY:'jsw-teams/web'};
+  const expected=await dataScope(env);
+  assert.equal(await dataScope({...env,REPORELAY_SITE_ORIGIN:origin+'/',REPORELAY_REPOSITORY:'JSW-TEAMS/WEB'}),expected);
+  assert.equal(await dataScope({...env,RELEASE:'202611.1',REPORELAY_GITHUB_APP_PRIVATE_KEY:'rotated'}),expected);
+  assert.notEqual(await dataScope({...env,REPORELAY_SITE_ORIGIN:'https://test.example'}),expected);
+  assert.notEqual(await dataScope({...env,REPORELAY_REPOSITORY:'jsw-teams/test'}),expected);
+});
+
+test('stored baseline comments remain readable; an unsupported format stays isolated without deleting it',async()=>{
+  const records=[];
+  await fixture(async({env,post,get,thread})=>{
+    assert.equal((await post({body:'Keep this discussion',attachments:[]})).status,201);
+    const signature=records[0].body.match(/^<!-- reporelay-comment:([^ ]+) -->/)[1];
+    const metadata=await verifyValue(signature,env,'comment');
+    assert.equal(metadata.format,1);
+    const unsupported=await signValue({...metadata,format:99,body:'Needs a migration'},env,'comment');
+    records.push({id:2,user:{login:env.REPORELAY_GITHUB_APP_BOT_LOGIN},body:'<!-- reporelay-comment:'+unsupported+' -->\n\n'});
+    const result=await(await get()).json();
+    assert.equal(result.comments.length,1);
+    assert.equal(result.comments[0].body,'Keep this discussion');
+    assert.equal(records.length,2,'An unsupported record is retained upstream');
+  },(path,init,{env})=>{
+    if(path.endsWith('/issues/42/comments')&&init.method==='POST'){
+      const record={id:1,user:{login:env.REPORELAY_GITHUB_APP_BOT_LOGIN},body:JSON.parse(init.body).body};
+      records.push(record);return Response.json(record,{status:201});
+    }
+    if(path.includes('/issues/42/comments?'))return Response.json(records);
+    return null;
   });
 });

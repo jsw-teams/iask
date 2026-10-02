@@ -1,3 +1,5 @@
+import { dataScope } from '../src/scope.js';
+const scope = await dataScope({REPORELAY_SITE_ORIGIN:'https://js.gripe',REPORELAY_REPOSITORY:'jsw-teams/web'});
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { worker, appDefaults, mockInstallation } from './helpers.mjs';
@@ -9,7 +11,7 @@ const env = { ...appDefaults, REPORELAY_REPOSITORY: 'jsw-teams/web',
   REPORELAY_GITHUB_APP_CLIENT_SECRET: 'test-secret', REPORELAY_SESSION_SECRET: 'a'.repeat(48), REPORELAY_IDENTITY_SECRET: 'b'.repeat(48),
   ASSETS: {fetch: async () => Response.json([{thread: activeThread, title: 'Test article'}])}};
 let activeThread = '';
-const sessionCookie = '__Host-reporelay_session_v2=' + await signValue({id: 17, login: 'VerifiedReader', csrf: 'test-csrf', exp: Date.now()+600000},env,'session');
+const sessionCookie = '__Host-reporelay_session=' + await signValue({id: 17, login: 'VerifiedReader', csrf: 'test-csrf', exp: Date.now()+600000},env,'session');
 
 function uniqueThread(prefix) {
   activeThread = prefix + '-' + crypto.randomUUID();
@@ -51,18 +53,18 @@ test('comments POST creates a GitHub issue and issue comment', async () => {
     if (href.includes('/labels/')) return Response.json({ name: decodeURIComponent(href.split('/').at(-1)) });
     if (href.endsWith('/repos/jsw-teams/web/issues/42') && (init.method || 'GET') === 'GET') {
       const hash = await commentHash(thread);
-      return Response.json({ number:42, title:'💬 Test article', body:'<!-- reporelay-thread:v2:test-v2:'+hash+' -->', labels:[{name:'comments'},{name:'reporelay'}], state:'open', locked:false });
+      return Response.json({ number:42, title:'💬 Test article', body:'<!-- reporelay-thread:' + scope + ':'+hash+' -->', labels:[{name:'comments'},{name:'reporelay'}], state:'open', locked:false });
     }
     if (href.endsWith('/repos/jsw-teams/web/issues')) {
       const payload = JSON.parse(init.body);
       assert.equal(payload.title, '💬 Test article');
       assert.deepEqual(payload.labels, ['comments', 'reporelay']);
-      assert.match(payload.body, /reporelay-thread:v2:test-v2:[0-9a-f]{24}/);
+      assert.match(payload.body, new RegExp('reporelay-thread:' + scope + ':[0-9a-f]{24}'));
       return Response.json({ number: 42, title: payload.title, body: payload.body, labels: payload.labels.map(name => ({name})), state: 'open', locked: false }, { status: 201 });
     }
     if (href.endsWith('/repos/jsw-teams/web/issues/42/comments')) {
       const payload = JSON.parse(init.body);
-      assert.match(payload.body, /reporelay-comment:v2:/);
+      assert.match(payload.body, /reporelay-comment:/);
       assert.match(payload.body, /Hello from the site/);
       return Response.json({
         id: 123,
@@ -105,7 +107,7 @@ test('ordinary GitHub issue comments appear as maintainer replies', async () => 
   await withFetch(async (url) => {
     const href = String(url);
     if (href.includes('/search/issues?')) {
-      return Response.json({ items: [{ number: 9, body:'<!-- reporelay-thread:v2:test-v2:'+hash+' -->',title:'💬 Fixture', state: 'open', locked: false }] });
+      return Response.json({ items: [{ number: 9, body:'<!-- reporelay-thread:' + scope + ':'+hash+' -->',title:'💬 Fixture', state: 'open', locked: false }] });
     }
     if (href.endsWith('/issues/9')) return Response.json({number:9,state:'open'});
     if (href.includes('/issues/9/comments?')) {

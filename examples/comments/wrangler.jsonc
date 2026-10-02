@@ -4,7 +4,6 @@
   "compatibility_date": "2026-09-01",
   "vars": {
     "REPORELAY_REPOSITORY": "YOUR_ACCOUNT/PRIVATE_REPOSITORY",
-    "REPORELAY_NAMESPACE": "production-v2",
     "REPORELAY_SITE_ORIGIN": "https://comments.example.com",
     "REPORELAY_GITHUB_APP_ID": "SET_APP_ID",
     "REPORELAY_GITHUB_APP_INSTALLATION_ID": "SET_INSTALLATION_ID",
@@ -21,7 +20,7 @@
   },
   "migrations": [
     {
-      "tag": "reporelay-v2",
+      "tag": "reporelay-threads",
       "new_sqlite_classes": [
         "CommentCoordinator"
       ]

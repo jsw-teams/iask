@@ -1,3 +1,5 @@
+import { dataScope } from '../src/scope.js';
+const scope = await dataScope({REPORELAY_SITE_ORIGIN:'https://js.gripe',REPORELAY_REPOSITORY:'jsw-teams/web'});
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { worker, appDefaults, mockInstallation } from './helpers.mjs';
@@ -9,7 +11,7 @@ const env = { ...appDefaults, REPORELAY_REPOSITORY: 'jsw-teams/web',
   REPORELAY_SESSION_SECRET: 'secret'.repeat(8), REPORELAY_IDENTITY_SECRET: 'identity'.repeat(8),
   ASSETS: {fetch: async () => Response.json([{thread: 'published-test', title: 'Real title'}])} };
 const get = (path, cookie = '') => worker.fetch(new Request(origin + path, {headers: {cookie}}), env);
-const session = async (extra = {}) => '__Host-reporelay_session_v2=' + await signValue({id: 17, login: 'RealReader', csrf: 'csrf', exp: Date.now()+600000, ...extra}, env, 'session');
+const session = async (extra = {}) => '__Host-reporelay_session=' + await signValue({id: 17, login: 'RealReader', csrf: 'csrf', exp: Date.now()+600000, ...extra}, env, 'session');
 const post = async (payload, cookie = '', csrf = 'csrf') => worker.fetch(new Request(origin + '/api/comments', {
   method: 'POST', headers: {origin, cookie, 'content-type':'application/json', 'x-comments-csrf':csrf}, body:JSON.stringify(payload)}),env);
 const payload = { thread: 'published-test', title: 'Fake title', name: 'ImpersonatedMaintainer', body:'Hello', company:'' };
@@ -23,7 +25,7 @@ test('session rejects forged, expired and wrong-purpose cookies; no credentials 
   assert.equal((await (await get('/api/comments/session')).json()).user, null);
   const valid = await session();
   assert.equal((await (await get('/api/comments/session',valid)).json()).user.login,'RealReader');
-  for (const cookie of [valid + 'x', await session({exp:Date.now()-1}), '__Host-reporelay_session_v2=' + await signValue({id:17,login:'Forged',exp:Date.now()+60000},env,'comment')])
+  for (const cookie of [valid + 'x', await session({exp:Date.now()-1}), '__Host-reporelay_session=' + await signValue({id:17,login:'Forged',exp:Date.now()+60000},env,'comment')])
     assert.equal((await (await get('/api/comments/session',cookie)).json()).user,null);
   const data = await (await get('/api/comments/session',valid)).text();
   assert.ok(!data.includes('test-client-secret') && !data.includes('test-bot'));
@@ -75,7 +77,7 @@ test('GitHub App user authorization uses state and PKCE, restricts redirects, an
     const cookies=callback.headers.getSetCookie();
     assert.equal(cookies.length,2);
     assert.ok(cookies.every(c=>!c.includes('visitor-token')));
-    const cookie=cookies.find(c=>c.startsWith('__Host-reporelay_session_v2=')).split(';')[0];
+    const cookie=cookies.find(c=>c.startsWith('__Host-reporelay_session=')).split(';')[0];
     assert.equal((await (await get('/api/comments/session',cookie)).json()).user.login,'RealReader');
     assert.equal(calls,2);
   });
@@ -86,7 +88,7 @@ test('fresh issue state prevents commenting after moderation closes a cached thr
   const hash=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(thread))).subarray(0,12).toString('hex');
   const closedEnv={...env,ASSETS:{fetch:async()=>Response.json([{thread,title:'Closed'}])}};
   await withFetch(async url=> {
-    if(String(url).includes('/search/issues?'))return Response.json({items:[{number:8,body:'<!-- reporelay-thread:v2:test-v2:'+hash+' -->',title:'💬 Fixture',state:'open'}]});
+    if(String(url).includes('/search/issues?'))return Response.json({items:[{number:8,body:'<!-- reporelay-thread:' + scope + ':'+hash+' -->',title:'💬 Fixture',state:'open'}]});
     assert.match(String(url),/\/issues\/8$/);
     return Response.json({number:8,state:'closed'});
   },async()=> {
@@ -111,11 +113,11 @@ test('maximum Chinese comments preserve signed identity and forged metadata cann
 test('copied identity metadata cannot impersonate another user or cross article threads', async () => {
   const thread='replay-'+crypto.randomUUID();
   const hash=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(thread))).subarray(0,12).toString('hex');
-  const metadata=await signValue({id:17,login:'RealReader',body:'Original comment',namespace:'test-v2',thread},env,'comment');
-  const otherThread=await signValue({id:17,login:'RealReader',body:'Original comment',namespace:'test-v2',thread:'another-thread'},env,'comment');
-  await withFetch(async url=>String(url).includes('/search/issues?') ? Response.json({items:[{number:11,body:'<!-- reporelay-thread:v2:test-v2:'+hash+' -->',title:'💬 Fixture',state:'open'}]}) : Response.json([
-    {id:1,user:{login:'OtherReader'},body:'<!-- reporelay-comment:v2:'+metadata+' -->\n\n'},
-    {id:2,user:{login:'Writer[bot]'},body:'<!-- reporelay-comment:v2:'+otherThread+' -->\n\n'}]),async()=> {
+  const metadata=await signValue({id:17,login:'RealReader',body:'Original comment',namespace:scope,thread},env,'comment');
+  const otherThread=await signValue({id:17,login:'RealReader',body:'Original comment',namespace:scope,thread:'another-thread'},env,'comment');
+  await withFetch(async url=>String(url).includes('/search/issues?') ? Response.json({items:[{number:11,body:'<!-- reporelay-thread:' + scope + ':'+hash+' -->',title:'💬 Fixture',state:'open'}]}) : Response.json([
+    {id:1,user:{login:'OtherReader'},body:'<!-- reporelay-comment:'+metadata+' -->\n\n'},
+    {id:2,user:{login:'Writer[bot]'},body:'<!-- reporelay-comment:'+otherThread+' -->\n\n'}]),async()=> {
     const response=await worker.fetch(new Request(origin+'/api/comments?thread='+thread),{...env,REPORELAY_GITHUB_APP_BOT_LOGIN:'Writer[bot]',ASSETS:{fetch:async()=>Response.json([{thread,title:'Replay'}])}});
     const data=await response.json();
     assert.deepEqual(data.comments, []);

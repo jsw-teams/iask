@@ -1,12 +1,13 @@
+import { dataScope } from './scope.js';
 import { githubRequest, installationToken } from './github.js';
 import { GitHubCommentsError } from './errors.js';
 import { authReady, commentSession, handleCommentAuth, sameOriginPost, signValue, verifyValue } from './auth.js';
 
 const MAX_BACKEND_BODY_BYTES = 1_000_000;
 const MAX_COMMENT_BODY_LENGTH = 5_000;
-const COMMENT_MARKER = 'reporelay-comment:v2';
+const COMMENT_MARKER = 'reporelay-comment';
 const COMMENT_BODY_MARKER = '<!-- reporelay-comment-body -->';
-const ISSUE_THREAD_MARKER = 'reporelay-thread:v2';
+const ISSUE_THREAD_MARKER = 'reporelay-thread';
 const COMMENT_LABELS = [
   { name: 'comments', color: '0e8a16', description: 'Article comment threads' },
   { name: 'reporelay', color: '0969da', description: 'Managed through RepoRelay' }
@@ -76,16 +77,16 @@ async function readBoundedBody(body, limit) {
   return result;
 }
 
-function commentSettings(env) {
+async function commentSettings(env) {
   const repository = typeof env.REPORELAY_REPOSITORY === 'string' ? env.REPORELAY_REPOSITORY.trim() : '';
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) return null;
   const [owner, repo] = repository.split('/');
-  const namespace = String(env.REPORELAY_NAMESPACE || '').trim();
+  const namespace = authReady(env) ? await dataScope(env) : null;
   const appId = String(env.REPORELAY_GITHUB_APP_ID || '').trim();
   const installationId = String(env.REPORELAY_GITHUB_APP_INSTALLATION_ID || '').trim();
   const privateKey = String(env.REPORELAY_GITHUB_APP_PRIVATE_KEY || '').trim();
   const botLogin = String(env.REPORELAY_GITHUB_APP_BOT_LOGIN || '').trim();
-  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(namespace) ||
+  if (!namespace ||
       !/^\d+$/.test(appId) || !/^\d+$/.test(installationId) || !privateKey.includes('PRIVATE KEY') ||
       !/^[A-Za-z0-9-]+\[bot\]$/.test(botLogin) || !authReady(env)) return null;
   return { repository, owner, repo, namespace, appId, installationId, privateKey, storage: env.REPORELAY_STORAGE };
@@ -103,7 +104,7 @@ function escapeMarkdownInline(value) {
 
 async function storedCommentBody(session, body, attachments, env, thread) {
   const name = session.login;
-  const metadata = await signValue({ id: session.id, login: name, body, attachments, thread, namespace: env.REPORELAY_NAMESPACE }, env, 'comment');
+  const metadata = await signValue({ format: 1, id: session.id, login: name, body, attachments, thread, namespace: (await dataScope(env)) }, env, 'comment');
   const quotedBody = body.split(/\r?\n/).map((line) => '    ' + line).join('\n');
   const media = attachments.map((url, index) => '![' + escapeMarkdownInline('Attachment ' + (index + 1)) + '](' + url + ')').join('\n\n');
   return '<!-- ' + COMMENT_MARKER + ':' + metadata + ' -->\n\n' +
@@ -113,15 +114,15 @@ async function storedCommentBody(session, body, attachments, env, thread) {
 
 async function parseStoredComment(comment, env, thread) {
   const body = typeof comment.body === 'string' ? comment.body : '';
-  const marker = body.match(/^<!-- reporelay-comment:v2:([A-Za-z0-9_.-]+) -->\n\n/);
-  if (/^<!-- (?:edgepress-comment:|reporelay-comment:v1:)/.test(body)) return null;
+  const marker = body.match(/^<!-- reporelay-comment:([A-Za-z0-9_.-]+) -->\n\n/);
+  if (/^<!-- (?:edgepress-comment:|reporelay-comment:)/.test(body) && !marker) return null;
   let author = comment.user?.login || 'GitHub';
   let text = body;
   let source = 'github';
   const trustedWriter = String(env.REPORELAY_GITHUB_APP_BOT_LOGIN || '').trim();
   if (marker && comment.user?.login === trustedWriter) {
     const metadata = await verifyValue(marker[1], env, 'comment');
-    if (metadata && metadata.thread === thread && metadata.namespace === env.REPORELAY_NAMESPACE && Number.isSafeInteger(metadata.id) && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(metadata.login) && typeof metadata.body === 'string') {
+    if (metadata?.format === 1 && metadata.thread === thread && metadata.namespace === (await dataScope(env)) && Number.isSafeInteger(metadata.id) && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(metadata.login) && typeof metadata.body === 'string') {
       author = metadata.login;
       text = metadata.body;
       source = 'site';
@@ -131,8 +132,8 @@ async function parseStoredComment(comment, env, thread) {
   let attachments = [];
   if (marker && comment.user?.login === trustedWriter) {
     const metadata = await verifyValue(marker[1], env, 'comment');
-    if (metadata && metadata.thread === thread && metadata.namespace === env.REPORELAY_NAMESPACE && Array.isArray(metadata.attachments)) {
-      const prefix = env.REPORELAY_SITE_ORIGIN + '/api/comments/media/' + env.REPORELAY_NAMESPACE + '/' + await threadHash(thread) + '/';
+    if (metadata?.format === 1 && metadata.thread === thread && metadata.namespace === (await dataScope(env)) && Array.isArray(metadata.attachments)) {
+      const prefix = env.REPORELAY_SITE_ORIGIN + '/api/comments/media/' + (await dataScope(env)) + '/' + await threadHash(thread) + '/';
       attachments = metadata.attachments.filter(value => typeof value === 'string' && value.startsWith(prefix) && /^[0-9a-f-]{36}\.(png|jpg|gif|webp|avif)$/.test(value.slice(prefix.length))).slice(0, 4);
     }
   }
@@ -308,7 +309,7 @@ function mediaUrlFor(requestUrl, settings, hash, filename) {
 }
 
 async function handleCommentMedia(request, env) {
-  const settings = commentSettings(env);
+  const settings = await commentSettings(env);
   if (!settings) return json({ error: 'comments_unavailable' }, 503);
   const url = new URL(request.url);
   const publicPath = url.pathname.slice('/api/comments/media/'.length);
@@ -326,7 +327,7 @@ async function handleCommentMedia(request, env) {
         headers: {
           Accept: 'application/vnd.github.raw+json',
           Authorization: 'Bearer ' + token,
-          'User-Agent': 'RepoRelay/0.1',
+          'User-Agent': 'RepoRelay',
           'X-GitHub-Api-Version': '2026-03-10'
         }
       });
@@ -426,7 +427,7 @@ async function handleComments(request, env) {
   if (!['GET', 'POST'].includes(request.method)) {
     return json({ error: 'method_not_allowed' }, 405, { Allow: 'GET, POST' });
   }
-  const settings = commentSettings(env);
+  const settings = await commentSettings(env);
   if (!settings) return json({ error: 'comments_unavailable' }, 503);
 
   const url = new URL(request.url);
@@ -556,7 +557,7 @@ export async function handleCommentRequest(request, env, { coordinated = false }
   if (!coordinated && (url.pathname === '/api/comments' ||
       (url.pathname === '/api/comments/media/' && request.method === 'POST'))) {
     if (!['GET','POST'].includes(request.method)) return json({ error:'method_not_allowed' },405,{Allow:'GET, POST'});
-    const settings = commentSettings(env);
+    const settings = await commentSettings(env);
     if (!settings) return json({ error: 'comments_unavailable' }, 503);
     if (request.method === 'POST') {
       if (!sameOriginPost(request,env)) return json({error:'cross_origin_request'},403);

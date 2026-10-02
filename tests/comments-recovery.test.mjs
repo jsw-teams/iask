@@ -1,3 +1,5 @@
+import { dataScope } from '../src/scope.js';
+const scope = await dataScope({REPORELAY_SITE_ORIGIN:'https://js.gripe',REPORELAY_REPOSITORY:'jsw-teams/web'});
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { worker, appDefaults, mockInstallation } from './helpers.mjs';
@@ -10,7 +12,7 @@ async function scenario(run, override) {
     REPORELAY_SITE_ORIGIN:origin,REPORELAY_GITHUB_APP_CLIENT_ID:'app',REPORELAY_GITHUB_APP_CLIENT_SECRET:'client-secret',
     REPORELAY_SESSION_SECRET:'session'.repeat(8),REPORELAY_IDENTITY_SECRET:'identity'.repeat(8),
     ASSETS:{fetch:async()=>Response.json([{thread,title:'Published title'}])}};
-  const cookie='__Host-reporelay_session_v2='+await signValue({id:17,login:'Reader',csrf:'csrf',exp:Date.now()+600000},env,'session');
+  const cookie='__Host-reporelay_session='+await signValue({id:17,login:'Reader',csrf:'csrf',exp:Date.now()+600000},env,'session');
   const calls=[];
   const saved=globalThis.fetch;
   globalThis.fetch=async(url,init={})=>{
@@ -20,15 +22,15 @@ async function scenario(run, override) {
     calls.push({path,method});
     const special=await override?.(path,method,init);
     if(special)return special;
-    if(path.startsWith('/search/issues?'))return Response.json({items:[{number:7,body:'<!-- reporelay-thread:v2:test-v2:'+hash+' -->',title:'💬 Fixture',state:'open'}]});
+    if(path.startsWith('/search/issues?'))return Response.json({items:[{number:7,body:'<!-- reporelay-thread:' + scope + ':'+hash+' -->',title:'💬 Fixture',state:'open'}]});
     if(path.includes('/labels/'))return Response.json({name:decodeURIComponent(path.split('/').at(-1))});
     if(path==='/repos/jsw-teams/web')return Response.json({has_issues:true,default_branch:'main'});
     if(path.startsWith('/repos/jsw-teams/web/issues?'))return Response.json([]);
     if(path==='/repos/jsw-teams/web/issues'&&method==='POST')return Response.json({number:44,state:'open'}, {status:201});
     if(/\/issues\/\d+$/.test(path)) {
       const number=Number(path.split('/').at(-1));
-      if(method==='PATCH')return Response.json({number,state:'open',locked:false,title:'💬 Published title',body:'<!-- reporelay-thread:v2:test-v2:'+hash+' -->',labels:[{name:'comments'},{name:'reporelay'}]});
-      return Response.json({number,state:'open',locked:false,title:'💬 Published title',body:'<!-- reporelay-thread:v2:test-v2:'+hash+' -->',labels:[{name:'comments'},{name:'reporelay'}]});
+      if(method==='PATCH')return Response.json({number,state:'open',locked:false,title:'💬 Published title',body:'<!-- reporelay-thread:' + scope + ':'+hash+' -->',labels:[{name:'comments'},{name:'reporelay'}]});
+      return Response.json({number,state:'open',locked:false,title:'💬 Published title',body:'<!-- reporelay-thread:' + scope + ':'+hash+' -->',labels:[{name:'comments'},{name:'reporelay'}]});
     }
     if(path.includes('/comments?'))return Response.json([]);
     if(path.endsWith('/comments')&&method==='POST')return Response.json({id:99,user:{login:'Writer[bot]'},created_at:'2026-10-02T12:00:00Z',body:JSON.parse(init.body).body},{status:201});
