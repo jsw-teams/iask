@@ -115,6 +115,7 @@ async function parseStoredComment(comment, env, thread) {
   const marker = body.match(/^<!-- reporelay-comment:([A-Za-z0-9_.-]+) -->\n\n/);
   if (/^<!-- (?:edgepress-comment:|reporelay-comment:)/.test(body) && !marker) return null;
   let author = comment.user?.login || 'GitHub';
+  let authorId = Number.isSafeInteger(comment.user?.id) && comment.user.id > 0 ? comment.user.id : null;
   let text = body;
   let source = 'github';
   const trustedWriter = marker ? (await repositoryInstallation(await commentSettings(env))).botLogin : '';
@@ -122,6 +123,7 @@ async function parseStoredComment(comment, env, thread) {
     const metadata = await verifyValue(marker[1], env, 'comment');
     if (metadata?.format === 1 && metadata.thread === thread && metadata.namespace === (await dataScope(env)) && Number.isSafeInteger(metadata.id) && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(metadata.login) && typeof metadata.body === 'string') {
       author = metadata.login;
+      authorId = metadata.id > 0 ? metadata.id : null;
       text = metadata.body;
       source = 'site';
     }
@@ -138,6 +140,8 @@ async function parseStoredComment(comment, env, thread) {
   return {
     id: String(comment.id),
     author,
+    authorId,
+    avatarUrl: authorId ? '/api/comments/avatar/' + authorId : null,
     profileUrl: /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(author) ? 'https://github.com/' + author : null,
     body: text,
     attachments,
@@ -422,8 +426,8 @@ async function readApiBody(request) {
 }
 
 async function handleComments(request, env) {
-  if (!['GET', 'POST'].includes(request.method)) {
-    return json({ error: 'method_not_allowed' }, 405, { Allow: 'GET, POST' });
+  if (!['GET', 'POST', 'DELETE'].includes(request.method)) {
+    return json({ error: 'method_not_allowed' }, 405, { Allow: 'GET, POST, DELETE' });
   }
   const settings = await commentSettings(env);
   if (!settings) return json({ error: 'comments_unavailable' }, 503);
@@ -470,6 +474,31 @@ async function handleComments(request, env) {
 
   if (!payload || Array.isArray(payload) || typeof payload !== 'object') return json({ error: 'invalid_comment' }, 400);
   const thread = typeof payload.thread === 'string' ? payload.thread.trim() : '';
+  if (request.method === 'DELETE') {
+    if (!validThread(thread) || !/^[1-9]\d{0,15}$/.test(String(payload.commentId)) || !Number.isSafeInteger(Number(payload.commentId))) {
+      return json({ error: 'invalid_comment' }, 400);
+    }
+    try {
+      const published = await publishedThread(request, env, thread);
+      if (published instanceof Response) return published;
+      const issue = await findCommentIssue(settings, thread);
+      if (!issue) return json({ error: 'comment_not_found' }, 404);
+      const path = '/repos/' + settings.owner + '/' + settings.repo + '/issues/comments/' + payload.commentId;
+      const comment = await githubRequest(settings, path);
+      // Check the actual GitHub issue and the authenticated, signed identity.
+      // Matching a display name or copying another comment's metadata is insufficient.
+      if (String(comment.issue_url).toLowerCase() !== ('https://api.github.com' + issuePath(settings, issue.number)).toLowerCase()) {
+        return json({ error: 'comment_not_found' }, 404);
+      }
+      const stored = await parseStoredComment(comment, env, thread);
+      if (!stored || stored.authorId !== session.id) return json({ error: 'comment_not_owned' }, 403);
+      await githubRequest(settings, path, { method: 'DELETE' });
+      return json({ ok: true, id: String(comment.id) });
+    } catch (error) {
+      if (missingIssue(error)) return json({ error: 'comment_not_found' }, 404);
+      return commentFailure(error);
+    }
+  }
   const body = typeof payload.body === 'string' ? payload.body.trim() : '';
   const media = payload.attachments === undefined ? [] : payload.attachments;
   if (!Array.isArray(media) || media.length > 4 || media.some(item => !item || typeof item.url !== 'string' || typeof item.receipt !== 'string')) return json({ error: 'invalid_comment' }, 400);
@@ -556,21 +585,22 @@ export class CommentCoordinator {
 export async function handleCommentRequest(request, env, { coordinated = false } = {}) {
   const url = new URL(request.url);
   if (url.pathname !== '/api/comments' && !url.pathname.startsWith('/api/comments/')) return null;
+  if (url.pathname.startsWith('/api/comments/avatar/')) return handleCommentAvatar(request);
   try { env = await signingEnvironment(env); }
   catch { return json({error:'comments_signing_unavailable'},503); }
   if (!coordinated && (url.pathname === '/api/comments' ||
       (url.pathname === '/api/comments/media/' && request.method === 'POST'))) {
-    if (!['GET','POST'].includes(request.method)) return json({ error:'method_not_allowed' },405,{Allow:'GET, POST'});
+    if (!['GET','POST','DELETE'].includes(request.method)) return json({ error:'method_not_allowed' },405,{Allow:'GET, POST, DELETE'});
     const settings = await commentSettings(env);
     if (!settings) return json({ error: 'comments_unavailable' }, 503);
-    if (request.method === 'POST') {
+    if (request.method !== 'GET') {
       if (!sameOriginPost(request,env)) return json({error:'cross_origin_request'},403);
       const session = await commentSession(request,env);
       if (!session) return json({error:'login_required'},401);
       if (request.headers.get('x-comments-csrf') !== session.csrf) return json({error:'invalid_csrf'},403);
     }
     let thread;
-    if (request.method === 'POST' && url.pathname === '/api/comments') {
+    if (request.method !== 'GET' && url.pathname === '/api/comments') {
       const bytes = await readApiBody(request.clone());
       if (bytes?.error) return json({ error: bytes.error }, bytes.status);
       try { thread = JSON.parse(new TextDecoder().decode(bytes))?.thread?.trim(); }
@@ -584,4 +614,21 @@ export async function handleCommentRequest(request, env, { coordinated = false }
   if (url.pathname.startsWith('/api/comments/media/')) return handleCommentMedia(request, env);
   if (url.pathname === '/api/comments') return handleComments(request, env);
   return handleCommentAuth(request, env);
+}
+
+async function handleCommentAvatar(request) {
+  if (!['GET', 'HEAD'].includes(request.method)) return json({error:'method_not_allowed'},405,{Allow:'GET, HEAD'});
+  const id = new URL(request.url).pathname.slice('/api/comments/avatar/'.length);
+  if (!/^[1-9]\d{0,15}$/.test(id) || !Number.isSafeInteger(Number(id))) return json({error:'invalid_avatar'},400);
+  try {
+    const response = await fetch('https://avatars.githubusercontent.com/u/' + id + '?s=96&v=4', {redirect:'manual'});
+    const type = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+    if (!response.ok || !COMMENT_MEDIA_TYPES.has(type) || !response.body) return json({error:'avatar_unavailable'},502);
+    const body = await readBoundedBody(response.body, 256_000);
+    if (!body) return json({error:'avatar_unavailable'},502);
+    return new Response(request.method === 'HEAD' ? null : body, {headers:{
+      'Content-Type':type, 'Content-Length':String(body.byteLength),
+      'Cache-Control':'public, max-age=86400', 'X-Content-Type-Options':'nosniff'
+    }});
+  } catch { return json({error:'avatar_unavailable'},502); }
 }

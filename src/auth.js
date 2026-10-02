@@ -88,7 +88,7 @@ export async function handleCommentAuth(request, env) {
   if (action === 'session') {
     if (request.method !== 'GET') return response({ error: 'method_not_allowed' }, 405);
     const session = await commentSession(request, env);
-    return response({ user: session ? { id: session.id, login: session.login } : null, csrf: session?.csrf || null });
+    return response({ user: session ? { id: session.id, login: session.login, avatarUrl: '/api/comments/avatar/' + session.id } : null, csrf: session?.csrf || null });
   }
   if (action === 'logout') {
     if (request.method !== 'POST') return response({ error: 'method_not_allowed' }, 405);

@@ -152,7 +152,7 @@ test('an absent coordinator fails explicitly and methods are restricted',async()
   await fixture(async({env,get})=>{
     env.REPORELAY_THREADS=undefined;
     assert.equal((await get()).status,503);
-    assert.equal((await handleCommentRequest(new Request(origin+'/api/comments',{method:'DELETE'}),env)).status,405);
+    assert.equal((await handleCommentRequest(new Request(origin+'/api/comments',{method:'PATCH'}),env)).status,405);
     assert.equal(await handleCommentRequest(new Request(origin+'/other'),env),null);
   });
 });

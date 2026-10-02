@@ -127,6 +127,8 @@ test('ordinary GitHub issue comments appear as maintainer replies', async () => 
     assert.deepEqual(data.comments[0], {
       id: '77',
       author: 'jsw-teams',
+      authorId: null,
+      avatarUrl: null,
       profileUrl: 'https://github.com/jsw-teams',
       body: 'Thanks for reading.',
       attachments: [],

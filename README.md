@@ -10,6 +10,7 @@ The first application is the article discussion system on [JS.GRIPE](https://js.
 
 - One readable Issue per article, shared across language versions.
 - Verified GitHub identity, PKCE, same-origin requests, CSRF and signed comment metadata.
+- Same-origin GitHub avatars and deletion of your own comments, verified by user ID and thread ownership.
 - PNG, JPEG, GIF, WebP and AVIF attachments: four per comment, five million bytes per file.
 - Signed upload receipts tied to the uploading visitor and article.
 - A Durable Object per project and article to serialize first comments and persist the Issue number.
@@ -32,10 +33,12 @@ npm pack --dry-run
 For an application, install from GitHub and commit the resulting lockfile. Use a specific commit for reproducible deployments; this package is not currently published to npm.
 
 ```sh
-npm install github:jsw-teams/RepoRelay#202610.2
+npm install github:jsw-teams/RepoRelay#202610.3
 ```
 
 ## Register and install a GitHub App
+
+For the complete website integration, see [installing and applying RepoRelay to EdgePress](docs/edgepress.md), including optional loading, page discussions and the local sticker gallery. Release notes are maintained separately in [CHANGELOG.md](CHANGELOG.md).
 
 Create an App in your GitHub account. Set the website's exact callback URL, for example `https://comments.example.com/api/comments/callback`. Disable webhook delivery and device flow. Keep wildcard callback matching off. User authorization happens when a visitor chooses to sign in on the website.
 
@@ -104,6 +107,8 @@ Generate this allowlist from published articles. Visitors cannot register arbitr
 | `POST /api/comments/media/` | Upload image bytes |
 | `GET /api/comments/media/<project>/<hash>/<file>` | Read a published image |
 | `POST /api/comments` | Submit a comment |
+| `DELETE /api/comments` | Delete your own comment using `{ "thread": "<id>", "commentId": "<id>" }` |
+| `GET /api/comments/avatar/<user-id>` | Read a bounded, same-origin GitHub avatar |
 
 Every write requires the website Origin, session cookie and `X-Comments-CSRF`. Uploads additionally require `X-Comments-Thread` and an image Content-Type. Retain the returned `url` and `receipt`; submit them together:
 
