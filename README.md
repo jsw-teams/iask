@@ -2,6 +2,8 @@
 
 RepoRelay lets a website use a private GitHub repository without sending repository credentials to visitors. GitHub App user authorization identifies the visitor; a repository-scoped installation token performs the server-side operations.
 
+Each operator self-hosts the Worker and registers their own GitHub App. The callback is generated from that instance's required `REPORELAY_SITE_ORIGIN`; there is no default callback or upstream service hosted by the project author. Other instances keep working independently if JS.GRIPE stops operating.
+
 The first application is the article discussion system on [JS.GRIPE](https://js.gripe). This repository also includes an example for publishing an explicitly allowed private file behind application authentication.
 
 ## What it provides
@@ -30,7 +32,7 @@ npm pack --dry-run
 For an application, install from GitHub and commit the resulting lockfile. Use a specific commit for reproducible deployments; this package is not currently published to npm.
 
 ```sh
-npm install github:jsw-teams/RepoRelay#v0.2.0
+npm install github:jsw-teams/RepoRelay#v0.2.1
 ```
 
 ## Register and install a GitHub App

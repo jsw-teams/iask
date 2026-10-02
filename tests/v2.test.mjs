@@ -161,3 +161,19 @@ test('server-side file reads stay in the configured repository and reject traver
     for(const path of ['../secrets','/private','a/../secrets','a\\secrets','a//b'])await assert.rejects(client.readFile(path));
   },(path,init)=>path.includes('/contents/published/notes.md')?Response.json({type:'file',content:'SGVsbG8=',encoding:'base64'}):null);
 });
+
+test('another operator uses their own callback, cookie and project return address',async()=>{
+  await fixture(async({env})=>{
+    const ownOrigin='https://independent-operator.example';
+    const ownEnv={...env,REPORELAY_SITE_ORIGIN:ownOrigin,REPORELAY_NAMESPACE:'independent-production'};
+    const response=await handleCommentRequest(new Request(ownOrigin+'/api/comments/login?return=%2Fproject%2Farticle%2F%23comments'),ownEnv);
+    assert.equal(response.status,303);
+    const target=new URL(response.headers.get('location'));
+    assert.equal(target.searchParams.get('redirect_uri'),ownOrigin+'/api/comments/callback');
+    const pendingCookie=response.headers.getSetCookie()[0].split(';')[0].split('=')[1];
+    const state=await verifyValue(pendingCookie,ownEnv,'oauth');
+    assert.equal(state.returnTo,'/project/article/#comments');
+    assert.equal(await verifyValue(pendingCookie,env,'oauth'),null);
+    assert.ok(!response.headers.get('location').includes('js.gripe'));
+  });
+});

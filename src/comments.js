@@ -220,7 +220,7 @@ async function normalizeCommentIssue(settings, issue, thread, title, requestUrl)
     '',
     'Comment thread for [' + title + '](' + siteUrl + '/).',
     '',
-    'Managed by JS.GRIPE comments. Delete an individual Issue Comment to moderate one post; close or lock this Issue to close the article comment section.'
+    'Managed by RepoRelay. Delete an individual Issue Comment to moderate one post; close or lock this Issue to close the article comment section.'
   ].join('\n');
   return githubRequest(settings, issuePath(settings, issue.number), {
     method: 'PATCH',

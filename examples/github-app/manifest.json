@@ -1,11 +1,11 @@
 {
-  "name": "RepoRelay JS.GRIPE",
-  "url": "https://github.com/jsw-teams/RepoRelay",
-  "redirect_url": "https://js.gripe/reporelay/",
+  "name": "RepoRelay YOUR_SITE",
+  "url": "https://comments.example.com",
+  "redirect_url": "https://comments.example.com",
   "callback_urls": [
-    "https://js.gripe/api/comments/callback"
+    "https://comments.example.com/api/comments/callback"
   ],
-  "public": true,
+  "public": false,
   "request_oauth_on_install": false,
   "setup_on_update": true,
   "hook_attributes": {

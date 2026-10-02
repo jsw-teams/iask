@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — 2026-10-03
+
+- Make the self-hosted operating model explicit: each operator owns their App, callback, repository and keys.
+- Replace the site-specific App manifest with an operator-owned URL template.
+- Remove site-specific moderation copy from the shared implementation.
+- Verify that another operator’s configured origin controls their authorization callback and post-login return.
+
 ## 0.2.0 — 2026-10-03
 
 - Extract the JS.GRIPE reference implementation into an independent package and open-source repository.

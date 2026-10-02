@@ -1,6 +1,6 @@
 {
   "name": "@jsw-teams/reporelay",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "GitHub App relay for private repository comments and controlled content access.",
   "type": "module",
   "license": "MIT",
