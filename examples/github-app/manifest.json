@@ -1,0 +1,20 @@
+{
+  "name": "RepoRelay JS.GRIPE",
+  "url": "https://github.com/jsw-teams/RepoRelay",
+  "redirect_url": "https://js.gripe/reporelay/",
+  "callback_urls": [
+    "https://js.gripe/api/comments/callback"
+  ],
+  "public": true,
+  "request_oauth_on_install": false,
+  "setup_on_update": true,
+  "hook_attributes": {
+    "active": false
+  },
+  "default_permissions": {
+    "metadata": "read",
+    "issues": "write",
+    "contents": "write"
+  },
+  "default_events": []
+}

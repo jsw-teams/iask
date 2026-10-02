@@ -1,0 +1,37 @@
+{
+  "name": "reporelay-demo",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-01",
+  "vars": {
+    "REPORELAY_REPOSITORY": "YOUR_ACCOUNT/PRIVATE_REPOSITORY",
+    "REPORELAY_NAMESPACE": "production-v2",
+    "REPORELAY_SITE_ORIGIN": "https://comments.example.com",
+    "REPORELAY_GITHUB_APP_ID": "SET_APP_ID",
+    "REPORELAY_GITHUB_APP_INSTALLATION_ID": "SET_INSTALLATION_ID",
+    "REPORELAY_GITHUB_APP_CLIENT_ID": "SET_CLIENT_ID",
+    "REPORELAY_GITHUB_APP_BOT_LOGIN": "YOUR_APP_SLUG[bot]"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "REPORELAY_THREADS",
+        "class_name": "CommentCoordinator"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "reporelay-v2",
+      "new_sqlite_classes": [
+        "CommentCoordinator"
+      ]
+    }
+  ],
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  }
+}
