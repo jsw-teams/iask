@@ -2,7 +2,7 @@ import { dataScope } from '../src/scope.js';
 const scope = await dataScope({REPORELAY_SITE_ORIGIN:'https://js.gripe',REPORELAY_REPOSITORY:'jsw-teams/web'});
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { worker, appDefaults, mockInstallation } from './helpers.mjs';
+import { worker, appDefaults, mockInstallation, mockRepositoryInstallation } from './helpers.mjs';
 import { signValue } from '../src/auth.js';
 const origin='https://js.gripe';
 async function scenario(run, override) {
@@ -17,6 +17,7 @@ async function scenario(run, override) {
   const saved=globalThis.fetch;
   globalThis.fetch=async(url,init={})=>{
     assert.equal(init.redirect,'manual','Workers support manual redirects; credentials must never follow a redirect');
+    if (String(url).endsWith('/installation')) return mockRepositoryInstallation(url,init);
     if (String(url).includes('/app/installations/')) return mockInstallation();
     const path=new URL(url).pathname+new URL(url).search, method=init.method||'GET';
     calls.push({path,method});
@@ -33,7 +34,7 @@ async function scenario(run, override) {
       return Response.json({number,state:'open',locked:false,title:'💬 Published title',body:'<!-- reporelay-thread:' + scope + ':'+hash+' -->',labels:[{name:'comments'},{name:'reporelay'}]});
     }
     if(path.includes('/comments?'))return Response.json([]);
-    if(path.endsWith('/comments')&&method==='POST')return Response.json({id:99,user:{login:'Writer[bot]'},created_at:'2026-10-02T12:00:00Z',body:JSON.parse(init.body).body},{status:201});
+    if(path.endsWith('/comments')&&method==='POST')return Response.json({id:99,user:{login:'comment-bot[bot]'},created_at:'2026-10-02T12:00:00Z',body:JSON.parse(init.body).body},{status:201});
     throw new Error('Unexpected API request: '+method+' '+path);
   };
   const get=()=>worker.fetch(new Request(origin+'/api/comments?thread='+thread),env);

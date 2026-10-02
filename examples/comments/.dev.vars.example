@@ -1,0 +1,2 @@
+REPORELAY_GITHUB_APP_CLIENT_SECRET=replace-with-your-app-client-secret
+REPORELAY_GITHUB_APP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nreplace-with-your-full-key\n-----END PRIVATE KEY-----"

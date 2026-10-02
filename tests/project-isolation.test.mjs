@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleCommentRequest, CommentCoordinator, createRepositoryClient } from '../src/index.js';
 import { signValue, verifyValue, commentSession } from '../src/auth.js';
-import { appDefaults, mockInstallation } from './helpers.mjs';
+import { appDefaults, mockInstallation, mockRepositoryInstallation } from './helpers.mjs';
 
 const origin = 'https://js.gripe';
 const png = Uint8Array.from([137,80,78,71,13,10,26,10,0,0,0,0]);
@@ -29,13 +29,14 @@ async function fixture(run, override = () => null) {
     assert.equal(init.redirect,'manual');
     const special = await override(path,init,{env,issue,thread,hash});
     if(special) return special;
+    if(path.endsWith('/installation'))return mockRepositoryInstallation(url,init);
     if(path.includes('/app/installations/'))return mockInstallation();
     if(path.startsWith('/search/issues?')) return Response.json({items:[]});
     if(path.includes('/labels/'))return Response.json({});
     if(path.endsWith('/issues')&&init.method==='POST') {await new Promise(resolve=>setTimeout(resolve,5));return Response.json(issue,{status:201});}
     if(path.endsWith('/issues/42'))return Response.json(issue);
     if(path.includes('/issues/42/comments?'))return Response.json([]);
-    if(path.endsWith('/issues/42/comments'))return Response.json({id:crypto.randomUUID(),user:{login:env.REPORELAY_GITHUB_APP_BOT_LOGIN},body:JSON.parse(init.body).body},{status:201});
+    if(path.endsWith('/issues/42/comments'))return Response.json({id:crypto.randomUUID(),user:{login:'comment-bot[bot]'},body:JSON.parse(init.body).body},{status:201});
     if(path.includes('/git/ref/heads/'))return Response.json({object:{sha:'base'}});
     if(path.includes('/contents/')&&init.method==='PUT')return Response.json({content:{sha:'image'}},{status:201});
     if(path.includes('/contents/'))return new Response(png,{headers:{'Content-Type':'text/html','Set-Cookie':'unsafe=1'}});
@@ -197,14 +198,14 @@ test('stored baseline comments remain readable; an unsupported format stays isol
     const metadata=await verifyValue(signature,env,'comment');
     assert.equal(metadata.format,1);
     const unsupported=await signValue({...metadata,format:99,body:'Needs a migration'},env,'comment');
-    records.push({id:2,user:{login:env.REPORELAY_GITHUB_APP_BOT_LOGIN},body:'<!-- reporelay-comment:'+unsupported+' -->\n\n'});
+    records.push({id:2,user:{login:'comment-bot[bot]'},body:'<!-- reporelay-comment:'+unsupported+' -->\n\n'});
     const result=await(await get()).json();
     assert.equal(result.comments.length,1);
     assert.equal(result.comments[0].body,'Keep this discussion');
     assert.equal(records.length,2,'An unsupported record is retained upstream');
   },(path,init,{env})=>{
     if(path.endsWith('/issues/42/comments')&&init.method==='POST'){
-      const record={id:1,user:{login:env.REPORELAY_GITHUB_APP_BOT_LOGIN},body:JSON.parse(init.body).body};
+      const record={id:1,user:{login:'comment-bot[bot]'},body:JSON.parse(init.body).body};
       records.push(record);return Response.json(record,{status:201});
     }
     if(path.includes('/issues/42/comments?'))return Response.json(records);

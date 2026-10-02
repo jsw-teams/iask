@@ -2,7 +2,7 @@ import { dataScope } from '../src/scope.js';
 const scope = await dataScope({REPORELAY_SITE_ORIGIN:'https://js.gripe',REPORELAY_REPOSITORY:'jsw-teams/web'});
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { worker, appDefaults, mockInstallation } from './helpers.mjs';
+import { worker, appDefaults, mockInstallation, mockRepositoryInstallation } from './helpers.mjs';
 import { signValue } from '../src/auth.js';
 
 const env = { ...appDefaults, REPORELAY_REPOSITORY: 'jsw-teams/web',
@@ -25,7 +25,7 @@ async function commentHash(thread) {
 
 async function withFetch(handler, run) {
   const original = globalThis.fetch;
-  globalThis.fetch = (url, init) => String(url).includes('/app/installations/70001/') ? mockInstallation() : handler(url, init);
+  globalThis.fetch = (url, init) => String(url).endsWith('/installation') ? mockRepositoryInstallation(url,init) : String(url).includes('/app/installations/70001/') ? mockInstallation() : handler(url, init);
   try { return await run(); }
   finally { globalThis.fetch = original; }
 }

@@ -1,6 +1,34 @@
 import { GitHubCommentsError } from './errors.js';
 const installationTokenCache = new Map();
 const pendingTokens = new Map();
+const installations = new Map();
+const pendingInstallations = new Map();
+
+export async function repositoryInstallation(settings) {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(settings.privateKey)));
+  const fingerprint = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
+  const cacheKey = settings.appId + ':' + settings.repository.toLowerCase() + ':' + fingerprint;
+  settings.discoveryKey = cacheKey;
+  const cached = installations.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return cached;
+  if (pendingInstallations.has(cacheKey)) return pendingInstallations.get(cacheKey);
+  const pending = (async () => {
+    const response = await fetch('https://api.github.com/repos/' + settings.owner + '/' + settings.repo + '/installation', {
+      redirect: 'manual', headers: {Accept:'application/vnd.github+json', Authorization:'Bearer ' + await githubAppJwt(settings),
+        'User-Agent':'RepoRelay', 'X-GitHub-Api-Version':'2026-03-10'}
+    });
+    if (!response.ok) throw new GitHubCommentsError(response);
+    const data = await response.json();
+    if (!Number.isSafeInteger(data.id) || data.id <= 0 || String(data.app_id) !== settings.appId ||
+        !/^[A-Za-z0-9-]+$/.test(data.app_slug) || data.suspended_at) throw new Error('Invalid repository App installation');
+    const result = {installationId:String(data.id), botLogin:data.app_slug + '[bot]', expires:Date.now()+300000};
+    if (installations.size >= 128) installations.delete(installations.keys().next().value);
+    installations.set(cacheKey, result);
+    return result;
+  })();
+  pendingInstallations.set(cacheKey, pending);
+  try {return await pending;} finally {pendingInstallations.delete(cacheKey);}
+}
 
 
 function base64Url(bytes) {
@@ -68,7 +96,7 @@ async function exchangeInstallationToken(settings) {
       Accept: 'application/vnd.github+json',
       Authorization: 'Bearer ' + jwt,
       'Content-Type': 'application/json',
-      'User-Agent': 'RepoRelay/0.2',
+      'User-Agent': 'RepoRelay',
       'X-GitHub-Api-Version': '2026-03-10'
     },
     body: JSON.stringify({
@@ -90,14 +118,13 @@ async function exchangeInstallationToken(settings) {
 export function repositorySettings(env) {
   const repository = String(env.REPORELAY_REPOSITORY || '').trim();
   const appId = String(env.REPORELAY_GITHUB_APP_ID || '').trim();
-  const installationId = String(env.REPORELAY_GITHUB_APP_INSTALLATION_ID || '').trim();
   const privateKey = String(env.REPORELAY_GITHUB_APP_PRIVATE_KEY || '').trim();
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) ||
-      !/^\d+$/.test(appId) || !/^\d+$/.test(installationId) || !privateKey.includes('PRIVATE KEY')) return null;
+      !/^\d+$/.test(appId) || !privateKey.includes('PRIVATE KEY')) return null;
   const [owner, repo] = repository.split('/');
   const permissions = env.REPORELAY_GITHUB_PERMISSIONS || { contents:'read', metadata:'read' };
   if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions) || Object.entries(permissions).some(([name,level]) => !['contents','issues','metadata'].includes(name) || !['read','write'].includes(level))) return null;
-  return { repository, owner, repo, appId, installationId, privateKey, permissions };
+  return { repository, owner, repo, appId, privateKey, permissions };
 }
 
 // For trusted server-side code only. No arbitrary URL or repository is accepted.
@@ -124,13 +151,16 @@ export async function githubRequest(settings, path, init = {}) {
       Accept: 'application/vnd.github+json',
       Authorization: 'Bearer ' + token,
       'Content-Type': 'application/json',
-      'User-Agent': 'RepoRelay/0.2',
+      'User-Agent': 'RepoRelay',
       'X-GitHub-Api-Version': '2026-03-10',
       ...(init.headers || {})
     }
   });
   if (!response.ok) {
-    if (response.status === 401) installationTokenCache.delete(settings.appId + ':' + settings.installationId + ':' + settings.repository + ':' + JSON.stringify(settings.permissions || {}));
+    if (response.status === 401) {
+      installationTokenCache.delete(settings.appId + ':' + settings.installationId + ':' + settings.repository + ':' + JSON.stringify(settings.permissions || {}));
+      installations.delete(settings.discoveryKey);
+    }
     throw new GitHubCommentsError(response);
   }
   if (response.status === 204) return null;
@@ -139,6 +169,8 @@ export async function githubRequest(settings, path, init = {}) {
 
 
 export async function installationToken(settings) {
+  const installation = await repositoryInstallation(settings);
+  settings.installationId = installation.installationId;
   const cacheKey = settings.appId + ':' + settings.installationId + ':' + settings.repository + ':' + JSON.stringify(settings.permissions || {});
   if (pendingTokens.has(cacheKey)) return pendingTokens.get(cacheKey);
   const pending = exchangeInstallationToken(settings);

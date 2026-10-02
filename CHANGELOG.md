@@ -1,5 +1,11 @@
 # Changelog
 
+## 202610.2 — 2026-10-03
+
+- Discover the repository installation and App bot identity automatically.
+- Generate per-site signing keys in persistent Durable Object storage; preserve existing explicit signing keys and the formal data format.
+- Add multiple-website setup guidance and concurrent key initialization, restart and App rotation tests.
+
 ## 202610.1 — 2026-10-03
 
 - Use GitHub App user authorization with PKCE and scoped installation tokens.

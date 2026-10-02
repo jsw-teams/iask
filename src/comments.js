@@ -1,5 +1,6 @@
 import { dataScope } from './scope.js';
-import { githubRequest, installationToken } from './github.js';
+import { signingEnvironment, storedSigningKeys } from './keys.js';
+import { githubRequest, installationToken, repositoryInstallation } from './github.js';
 import { GitHubCommentsError } from './errors.js';
 import { authReady, commentSession, handleCommentAuth, sameOriginPost, signValue, verifyValue } from './auth.js';
 
@@ -83,13 +84,10 @@ async function commentSettings(env) {
   const [owner, repo] = repository.split('/');
   const namespace = authReady(env) ? await dataScope(env) : null;
   const appId = String(env.REPORELAY_GITHUB_APP_ID || '').trim();
-  const installationId = String(env.REPORELAY_GITHUB_APP_INSTALLATION_ID || '').trim();
   const privateKey = String(env.REPORELAY_GITHUB_APP_PRIVATE_KEY || '').trim();
-  const botLogin = String(env.REPORELAY_GITHUB_APP_BOT_LOGIN || '').trim();
   if (!namespace ||
-      !/^\d+$/.test(appId) || !/^\d+$/.test(installationId) || !privateKey.includes('PRIVATE KEY') ||
-      !/^[A-Za-z0-9-]+\[bot\]$/.test(botLogin) || !authReady(env)) return null;
-  return { repository, owner, repo, namespace, appId, installationId, privateKey, storage: env.REPORELAY_STORAGE };
+      !/^\d+$/.test(appId) || !privateKey.includes('PRIVATE KEY') || !authReady(env)) return null;
+  return { repository, owner, repo, namespace, appId, privateKey, storage: env.REPORELAY_STORAGE };
 }
 
 function validThread(value) {
@@ -119,7 +117,7 @@ async function parseStoredComment(comment, env, thread) {
   let author = comment.user?.login || 'GitHub';
   let text = body;
   let source = 'github';
-  const trustedWriter = String(env.REPORELAY_GITHUB_APP_BOT_LOGIN || '').trim();
+  const trustedWriter = marker ? (await repositoryInstallation(await commentSettings(env))).botLogin : '';
   if (marker && comment.user?.login === trustedWriter) {
     const metadata = await verifyValue(marker[1], env, 'comment');
     if (metadata?.format === 1 && metadata.thread === thread && metadata.namespace === (await dataScope(env)) && Number.isSafeInteger(metadata.id) && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(metadata.login) && typeof metadata.body === 'string') {
@@ -544,6 +542,10 @@ export class CommentCoordinator {
     this.pending = Promise.resolve();
   }
   async fetch(request) {
+    if (new URL(request.url).pathname === '/__reporelay/keys') {
+      if (request.method !== 'GET') return json({error:'method_not_allowed'},405);
+      return json(await storedSigningKeys(this.state.storage));
+    }
     const task = this.pending.then(() => handleCommentRequest(request,
       { ...this.env, REPORELAY_STORAGE: this.state.storage }, { coordinated: true }));
     this.pending = task.catch(() => {});
@@ -554,6 +556,8 @@ export class CommentCoordinator {
 export async function handleCommentRequest(request, env, { coordinated = false } = {}) {
   const url = new URL(request.url);
   if (url.pathname !== '/api/comments' && !url.pathname.startsWith('/api/comments/')) return null;
+  try { env = await signingEnvironment(env); }
+  catch { return json({error:'comments_signing_unavailable'},503); }
   if (!coordinated && (url.pathname === '/api/comments' ||
       (url.pathname === '/api/comments/media/' && request.method === 'POST'))) {
     if (!['GET','POST'].includes(request.method)) return json({ error:'method_not_allowed' },405,{Allow:'GET, POST'});

@@ -2,7 +2,7 @@ import { dataScope } from '../src/scope.js';
 const scope = await dataScope({REPORELAY_SITE_ORIGIN:'https://js.gripe',REPORELAY_REPOSITORY:'jsw-teams/web'});
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { worker, appDefaults, mockInstallation } from './helpers.mjs';
+import { worker, appDefaults, mockInstallation, mockRepositoryInstallation } from './helpers.mjs';
 import { signValue, verifyValue } from '../src/auth.js';
 
 const origin = 'https://js.gripe';
@@ -17,7 +17,7 @@ const post = async (payload, cookie = '', csrf = 'csrf') => worker.fetch(new Req
 const payload = { thread: 'published-test', title: 'Fake title', name: 'ImpersonatedMaintainer', body:'Hello', company:'' };
 async function withFetch(handler, run) {
   const saved = globalThis.fetch;
-  globalThis.fetch = (url, init) => String(url).includes('/app/installations/70001/') ? mockInstallation() : handler(url, init);
+  globalThis.fetch = (url, init) => String(url).endsWith('/installation') ? mockRepositoryInstallation(url,init) : String(url).includes('/app/installations/70001/') ? mockInstallation() : handler(url, init);
   try { await run(); } finally { globalThis.fetch = saved; }
 }
 

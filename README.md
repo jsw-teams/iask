@@ -32,7 +32,7 @@ npm pack --dry-run
 For an application, install from GitHub and commit the resulting lockfile. Use a specific commit for reproducible deployments; this package is not currently published to npm.
 
 ```sh
-npm install github:jsw-teams/RepoRelay#202610.1
+npm install github:jsw-teams/RepoRelay#202610.2
 ```
 
 ## Register and install a GitHub App
@@ -49,7 +49,7 @@ Repository permissions for comments and media:
 
 Install the App only on the chosen storage repository. It must have Issues enabled and an initial commit for the media branch. The public source repository and the private comment repository are separate roles. Generate a client secret and a private key. PKCS#1 and PKCS#8 PEM keys are supported.
 
-The installation ID is the number in the installation settings URL. The bot login is `<app-slug>[bot]`. See [GitHub user authorization](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app) and [repository-scoped installation tokens](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app).
+The Worker discovers the repository’s installation and bot identity from GitHub automatically. See [GitHub user authorization](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app) and [repository-scoped installation tokens](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app).
 
 ## Configure a comment Worker
 
@@ -72,9 +72,7 @@ Required variables:
 REPORELAY_REPOSITORY=owner/private-repository
 REPORELAY_SITE_ORIGIN=https://comments.example.com
 REPORELAY_GITHUB_APP_ID=<App ID>
-REPORELAY_GITHUB_APP_INSTALLATION_ID=<Installation ID>
 REPORELAY_GITHUB_APP_CLIENT_ID=<Client ID>
-REPORELAY_GITHUB_APP_BOT_LOGIN=<app-slug>[bot]
 ```
 
 Add these Worker Secrets with Wrangler or the Cloudflare dashboard:
@@ -82,11 +80,9 @@ Add these Worker Secrets with Wrangler or the Cloudflare dashboard:
 ```sh
 npx wrangler secret put REPORELAY_GITHUB_APP_PRIVATE_KEY
 npx wrangler secret put REPORELAY_GITHUB_APP_CLIENT_SECRET
-npx wrangler secret put REPORELAY_SESSION_SECRET
-npx wrangler secret put REPORELAY_IDENTITY_SECRET
 ```
 
-Use separate random secrets of at least 32 characters for session and identity signing. Never commit `.dev.vars` or private keys. For local development, copy `.dev.vars.example` to the example directory and fill it there. The HTTPS origin must match the request origin exactly.
+Session and identity signing keys are generated automatically on first use and persisted in the project’s Durable Object. They are separate per website and survive restarts, release upgrades and App credential rotation. Do not delete that Durable Object namespace. Operators with existing explicit signing Secrets may retain them; these advanced overrides remain supported so existing formal records keep their original signatures. Never commit `.dev.vars` or private keys. For local development, copy `.dev.vars.example` to the example directory and fill it there. The HTTPS origin must match the request origin exactly.
 
 The trusted `ASSETS` binding supplies `/edgepress/comment-threads.json`:
 
@@ -133,11 +129,11 @@ The storage contract uses a stable `reporelay-thread:<project>:<article-hash>` I
 
 If an incompatible change is unavoidable, publish a migration proposal covering affected fields, verification, backup and rollback before adopting it. Migration must be explicit and must preserve original author and source attribution. Do not repost historical comments under an impersonated visitor identity. Unsupported format readers may be removed only under that announced migration plan. Unmigrated records remain retained and isolated; they must not be silently interpreted as the new format. Deprecating an API or feature does not authorize deleting its stored data.
 
-Keep the production origin, repository, article IDs and identity signing secret stable. Back up the signing secret securely: changing it makes existing signed comments unreadable and requires a migration plan. App private keys and client secrets may rotate independently of the data format. A domain or repository move also requires an explicit migration rather than starting over silently.
+Keep the production origin, repository, article IDs and signing-key Durable Object stable. Preserve its storage and backups: losing identity signing keys makes existing signed comments unreadable and requires a recovery or migration plan. App private keys and client secrets may rotate independently of the data format. A domain or repository move also requires an explicit migration rather than starting over silently.
 
 ## Multiple websites
 
-One operator may reuse their GitHub App across several websites. Deploy one Worker per website, with its own `REPORELAY_SITE_ORIGIN`, session signing secret and identity signing secret. App IDs and App credentials may be shared by Workers under the same operator. Each repository must be included in the App installation; use the appropriate installation ID when accounts differ. Workers using the same repository still have separate discussion collections because their origins differ.
+One operator may reuse their GitHub App across several websites. Deploy one Worker per website, with its own `REPORELAY_SITE_ORIGIN`; separate signing keys are generated automatically. App IDs and App credentials may be shared by Workers under the same operator. Each repository must be included in the App installation; the appropriate installation is discovered for each repository even when accounts differ. Workers using the same repository still have separate discussion collections because their origins differ.
 
 Register each site's exact `https://<site>/api/comments/callback` in the App. RepoRelay explicitly sends that site's `redirect_uri` and rejects authorization callbacks and submissions on a different origin. GitHub permits [up to ten callback URLs per App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/about-the-user-authorization-callback-url). Additional Apps can serve more sites. Other operators register their own Apps and host their own Workers.
 
