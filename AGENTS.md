@@ -16,3 +16,5 @@
 
 - Netlify uses its auto-provisioned Database and committed SQL migrations. Reuse the PostgreSQL adapter with verified TLS and session locks. Use the documented Neon direct endpoint rather than transaction pooling. Do not run hosted DDL at request time. Database credits share the platform budget; do not describe Free as an always-on database allowance.
 - Additional embedding websites require exact HTTPS origins and distinct thread prefixes. Keep existing primary thread identifiers, scopes and signing keys unchanged. Homepage pages do not contain discussion slots.
+
+- Reduce DO request count and active I/O duration with isolate-local stable signing-key caches, exact in-flight read coalescing and parallel independent upstream reads. Do not add background polling or keepalive timers. Recreate a stub once on transient read failures; never retry mutations, overloads or application exceptions. Keep persisted keys, namespaces, uncertain-creation markers and serialized writes. Client cancellation is not evidence that a write failed.

@@ -23,12 +23,12 @@ function deployment() {
   return {env,count:()=>requests,restart:()=>{objects.clear();env.REPORELAY_THREADS={...env.REPORELAY_THREADS};}};
 }
 
-test('signing-key requests coalesce and reuse memory for five minutes, then refresh safely',async()=>{
+test('signing-key requests coalesce and reuse memory for one hour, then refresh safely',async()=>{
   const {env,count}=deployment();const originalNow=Date.now;let now=originalNow();Date.now=()=>now;
   try {
     const first=await Promise.all(Array.from({length:30},()=>signingEnvironment(env)));
     assert.equal(count(),1);
-    now+=299999;assert.equal((await signingEnvironment(env)).REPORELAY_IDENTITY_SECRET,first[0].REPORELAY_IDENTITY_SECRET);assert.equal(count(),1);
+    now+=3599999;assert.equal((await signingEnvironment(env)).REPORELAY_IDENTITY_SECRET,first[0].REPORELAY_IDENTITY_SECRET);assert.equal(count(),1);
     now+=2;assert.equal((await signingEnvironment(env)).REPORELAY_IDENTITY_SECRET,first[0].REPORELAY_IDENTITY_SECRET);assert.equal(count(),2);
   }finally{Date.now=originalNow;}
 });

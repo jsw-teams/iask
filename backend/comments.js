@@ -1,4 +1,5 @@
 import {requestThread} from './transport.js';
+import {coordinatorFetch} from './durable.js';
 import {configuredWebsites} from './websites.js';
 import { dataScope } from './scope.js';
 import { commentEnvironment } from './environment.js';
@@ -468,8 +469,10 @@ async function handleComments(request, env) {
       if (!issue) return json({ comments: [], closed: false });
       let comments;
       try {
-        issue = await githubRequest(settings, issuePath(settings, issue.number));
-        comments = await readIssueComments(settings, issue.number, env, thread);
+        [issue, comments] = await Promise.all([
+          githubRequest(settings, issuePath(settings, issue.number)),
+          readIssueComments(settings, issue.number, env, thread)
+        ]);
         await cacheCommentIssue(settings, thread, issue);
       }
       catch (error) {
@@ -668,7 +671,7 @@ export async function handleCommentRequest(request, env, { coordinated = false }
     if (!validThread(thread)) return json({ error: 'invalid_thread' }, 400);
     if (!env.REPORELAY_THREADS) return json({ error: 'comments_coordinator_unavailable' }, 503);
     const id = env.REPORELAY_THREADS.idFromName(settings.repository + ':' + settings.namespace + ':' + thread);
-    return env.REPORELAY_THREADS.get(id).fetch(request);
+    return coordinatorFetch(env.REPORELAY_THREADS,id,request);
   }
   if (url.pathname.startsWith('/api/comments/media/')) return handleCommentMedia(request, env);
   if (url.pathname === '/api/comments') return handleComments(request, env);

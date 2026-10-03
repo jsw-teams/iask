@@ -1,6 +1,9 @@
 import { dataScope } from './scope.js';
+import {coordinatorFetch} from './durable.js';
 const caches = new WeakMap();
-const CACHE_MS = 300000;
+// Persisted signing keys are stable; an origin/repository change gets its own scope.
+// No timer or polling keeps a Durable Object alive to refresh this isolate cache.
+const CACHE_MS = 3600000;
 
 export async function signingEnvironment(env) {
   if (typeof env.REPORELAY_SESSION_SECRET === 'string' && env.REPORELAY_SESSION_SECRET.length >= 32 &&
@@ -12,9 +15,8 @@ export async function signingEnvironment(env) {
   let entry=entries.get(scope);
   if(!entry || entry.expires<=Date.now()) {
     const pending=(async()=>{
-      const object=env.REPORELAY_THREADS.get(env.REPORELAY_THREADS.idFromName('signing:'+scope));
       // Binding-only capability. Public comment routing never forwards this path.
-      const response=await object.fetch(new Request('https://reporelay.internal/__reporelay/keys'));
+      const response=await coordinatorFetch(env.REPORELAY_THREADS,env.REPORELAY_THREADS.idFromName('signing:'+scope),new Request('https://reporelay.internal/__reporelay/keys'));
       if(!response.ok)throw new Error('Project signing keys unavailable');
       const keys=await response.json();
       if(![keys.session,keys.identity].every(value=>typeof value==='string'&&value.length>=32))throw new Error('Invalid stored signing keys');
