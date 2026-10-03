@@ -15,7 +15,6 @@ export function renderWidget(document, dictionary) {
     '" data-comments-title="' + escape(document.title) + '"' + attributes + '>' +
     '<header class="post-comments-header"><div><span class="comment-eyebrow">' + label('projectName') + '</span><h2>' + label('commentsTitle') + '</h2></div></header>' +
     '<p class="comments-status" data-comments-status role="status" aria-live="polite">' + label('commentsLoading') + '</p>' +
-    '<button type="button" class="comment-secondary" data-comments-consent-settings>' + label('privacySettings') + '</button>' +
     '<ol class="comment-list" data-comments-list></ol>' +
     '<div class="comment-account" data-comments-account hidden><span data-comments-identity></span><button type="button" class="comment-secondary" data-comments-logout>' + label('commentsLogout') + '</button></div>' +
     '<div class="comment-welcome" data-comments-signin hidden><span class="comment-welcome-text">' + label('commentsLoginRequired') + '</span><a class="comment-login" data-comments-login>' + label('commentsLogin') + '</a></div>' +
@@ -28,5 +27,5 @@ export function renderWidget(document, dictionary) {
     '<small id="comment-attachment-help" class="comment-note">' + label('commentAttachmentHelp') + '</small><div class="comment-attachment-list" data-comments-attachments></div>' +
     '<div class="comment-honeypot" aria-hidden="true"><label>Company<input name="company" type="text" tabindex="-1" autocomplete="off"></label></div>' +
     '<button type="submit" class="comment-primary">' + label('commentSubmit') + '</button><p id="comment-notice" class="comment-note">' + label('commentNotice') + '</p>' +
-    '</form><footer class="comment-footer"><a href="https://github.com/jsw-teams/iask" target="_blank" rel="noopener noreferrer">' + label('projectName') + '</a><button type="button" class="comment-privacy" data-comments-privacy>' + label('privacySettings') + '</button></footer><noscript><p class="comment-note">' + label('commentsNeedJavaScript') + '</p></noscript></section>';
+    '</form><footer class="comment-footer"><button type="button" class="comment-privacy" data-comments-privacy>' + label('privacySettings') + '</button></footer><noscript><p class="comment-note">' + label('commentsNeedJavaScript') + '</p></noscript></section>';
 }

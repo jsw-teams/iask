@@ -1,0 +1,47 @@
+{
+  "generator": "Built-in image_gen",
+  "date": "2026-10-03",
+  "reference": "https://github.com/jsw-teams/web/blob/main/js.gripe/content/assets/images/brand/edgepress-project/mascot.png",
+  "assets": [
+    {
+      "asset": "../stickers/mascots/blackbear-wave.png",
+      "prompt": "Edit target: the reference four-sticker image. Extract ONLY the top left blackbear (wave) as ONE standalone sticker. Remove every other pose. Preserve the selected character, its face, pose, soft fur, colors, markings, especially the cream V chest mark and original illustration exactly. Tightly frame the complete selected mascot including any gesture effects with 5-8% transparent margin, centered square composition. Actual transparent alpha. No sprite sheet, no text, no border, no background, no additional objects. This is a separate production sticker image for a 64px comment interface."
+    },
+    {
+      "asset": "../stickers/mascots/blackbear-approve.png",
+      "prompt": "Edit target: the reference four-sticker image. Extract ONLY the top right blackbear (approve) as ONE standalone sticker. Remove every other pose. Preserve the selected character, its face, pose, soft fur, colors, markings, especially the cream V chest mark and original illustration exactly. Tightly frame the complete selected mascot including any gesture effects with 5-8% transparent margin, centered square composition. Actual transparent alpha. No sprite sheet, no text, no border, no background, no additional objects. This is a separate production sticker image for a 64px comment interface."
+    },
+    {
+      "asset": "../stickers/mascots/blackbear-think.png",
+      "prompt": "Edit target: the reference four-sticker image. Extract ONLY the bottom left blackbear (think) as ONE standalone sticker. Remove every other pose. Preserve the selected character, its face, pose, soft fur, colors, markings, especially the cream V chest mark and original illustration exactly. Tightly frame the complete selected mascot including any gesture effects with 5-8% transparent margin, centered square composition. Actual transparent alpha. No sprite sheet, no text, no border, no background, no additional objects. This is a separate production sticker image for a 64px comment interface."
+    },
+    {
+      "asset": "../stickers/mascots/blackbear-celebrate.png",
+      "prompt": "Edit target: the reference four-sticker image. Extract ONLY the bottom right blackbear (celebrate) as ONE standalone sticker. Remove every other pose. Preserve the selected character, its face, pose, soft fur, colors, markings, especially the cream V chest mark and original illustration exactly. Tightly frame the complete selected mascot including any gesture effects with 5-8% transparent margin, centered square composition. Actual transparent alpha. No sprite sheet, no text, no border, no background, no additional objects. This is a separate production sticker image for a 64px comment interface."
+    },
+    {
+      "asset": "../stickers/mascots/blackbear-perfect.png",
+      "prompt": "Create ONE standalone transparent-background sticker of the same black bear with its distinctive cream V-shaped chest mark from the reference. Keep its exact character identity, soft rounded illustration style, fur and palette. This sticker means PERFECT SCORE / 满分: happy proud mascot presenting a clear red hand-drawn \"100\" with two underline strokes, unmistakable 100 points. The only text is \"100\", no words. Square tightly framed image, one full-body mascot, centered with 5-8% transparent padding around all nontransparent pixels. Actual transparent alpha, no background or extra characters. Crisp legible at 64px. No sprite sheet."
+    },
+    {
+      "asset": "../stickers/mascots/panda-wave.png",
+      "prompt": "Edit target: the reference four-sticker image. Extract ONLY the top left panda (wave) as ONE standalone sticker. Remove every other pose. Preserve the selected character, its face, pose, soft fur, colors, markings and original illustration exactly. Tightly frame the complete selected mascot including any gesture effects with 5-8% transparent margin, centered square composition. Actual transparent alpha. No sprite sheet, no text, no border, no background, no additional objects. This is a separate production sticker image for a 64px comment interface."
+    },
+    {
+      "asset": "../stickers/mascots/panda-approve.png",
+      "prompt": "Edit target: the reference four-sticker image. Extract ONLY the top right panda (approve) as ONE standalone sticker. Remove every other pose. Preserve the selected character, its face, pose, soft fur, colors, markings and original illustration exactly. Tightly frame the complete selected mascot including any gesture effects with 5-8% transparent margin, centered square composition. Actual transparent alpha. No sprite sheet, no text, no border, no background, no additional objects. This is a separate production sticker image for a 64px comment interface."
+    },
+    {
+      "asset": "../stickers/mascots/panda-think.png",
+      "prompt": "Edit target: the reference four-sticker image. Extract ONLY the bottom left panda (think) as ONE standalone sticker. Remove every other pose. Preserve the selected character, its face, pose, soft fur, colors, markings and original illustration exactly. Tightly frame the complete selected mascot including any gesture effects with 5-8% transparent margin, centered square composition. Actual transparent alpha. No sprite sheet, no text, no border, no background, no additional objects. This is a separate production sticker image for a 64px comment interface."
+    },
+    {
+      "asset": "../stickers/mascots/panda-celebrate.png",
+      "prompt": "Edit target: the reference four-sticker image. Extract ONLY the bottom right panda (celebrate) as ONE standalone sticker. Remove every other pose. Preserve the selected character, its face, pose, soft fur, colors, markings and original illustration exactly. Tightly frame the complete selected mascot including any gesture effects with 5-8% transparent margin, centered square composition. Actual transparent alpha. No sprite sheet, no text, no border, no background, no additional objects. This is a separate production sticker image for a 64px comment interface."
+    },
+    {
+      "asset": "../stickers/mascots/panda-perfect.png",
+      "prompt": "Create ONE standalone transparent-background sticker of the same panda from the reference. Keep its exact character identity, soft rounded illustration style, fur and palette. This sticker means PERFECT SCORE / 满分: happy proud mascot presenting a clear red hand-drawn \"100\" with two underline strokes, unmistakable 100 points. The only text is \"100\", no words. Square tightly framed image, one full-body mascot, centered with 5-8% transparent padding around all nontransparent pixels. Actual transparent alpha, no background or extra characters. Crisp legible at 64px. No sprite sheet."
+    }
+  ]
+}

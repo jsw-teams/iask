@@ -1,3 +1,5 @@
+import {serviceFetch,imageResource} from './client.js';
+import {loadStickerCatalog,localizedSticker,stickerImage,insertSticker,renderStickerText} from './stickers.js';
 export function initializeComments(context) {
   const root = document.querySelector('[data-commentnest-comments]');
   if (!root) return;
@@ -5,7 +7,6 @@ export function initializeComments(context) {
   if (consentButton) consentButton.hidden = true;
 
   const thread = root.dataset.commentsThread || '';
-  const title = root.dataset.commentsTitle || document.title;
   const list = root.querySelector('[data-comments-list]');
   const form = root.querySelector('[data-comments-form]');
   const status = root.querySelector('[data-comments-status]');
@@ -22,15 +23,15 @@ export function initializeComments(context) {
   const sessionHeaders=()=>bearer?{'X-Comments-Session':bearer}:{};
   let popup=null, loginChannel=null;
   if(login) {
-    login.href='/api/comments/login';
+    login.href='#';
     login.addEventListener('click',event=>{
       event.preventDefault();
       loginChannel=Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join('');
-      const target='/api/comments/login?return='+encodeURIComponent('/commentnest/auth-complete?channel='+loginChannel);
-      popup=window.open(target,'commentnest-login-'+loginChannel,'popup,width=620,height=740');
-      if(!popup)setStatus(messages.error,true);
+      popup=window.open('/auth','commentnest-login-'+loginChannel,'popup,width=620,height=740');
+      if(!popup){setStatus(messages.error,true);return;}
     });
     window.addEventListener('message',event=>{
+      if(event.origin===location.origin && event.source===popup && event.data?.type==='commentnest:login-ready' && loginChannel){popup.postMessage({type:'commentnest:login-start',channel:loginChannel,loading:messages.loading,error:messages.error},location.origin);return;}
       if(event.origin!==location.origin || event.source!==popup || event.data?.type!=='commentnest:login' || event.data.channel!==loginChannel)return;
       bearer=typeof event.data.token==='string' && event.data.token.length<=2048?event.data.token:null;
       try {bearer?sessionStorage.setItem(tokenKey,bearer):sessionStorage.removeItem(tokenKey);}catch{}
@@ -93,17 +94,10 @@ export function initializeComments(context) {
       try { asset = new URL(url); } catch { continue; }
       if (asset.origin !== location.origin || !/^\/api\/comments\/media\/[a-f0-9]{24}\/[a-f0-9]{24}\/[0-9a-f-]{36}\.(png|jpg|gif|webp|avif)$/.test(asset.pathname)) continue;
       const link = document.createElement('a');
-      // Previously cached image responses must not bypass the current reference check.
-      const current=new URL(url);current.searchParams.set('check',String(Date.now()));
-      link.href = current.href;
-      link.target = '_blank';
-      link.rel = 'nofollow noopener';
+      link.target = '_blank';link.rel = 'nofollow noopener';
       const image = document.createElement('img');
-      image.src = current.href;
-      image.alt = messages.attachment;
-      image.loading = 'lazy';
-      image.decoding = 'async';
-      image.className = 'comment-attachment-image';
+      image.alt = messages.attachment;image.loading = 'lazy';image.decoding = 'async';image.className = 'comment-attachment-image';
+      imageResource(asset.pathname.slice('/api/comments/media/'.length)).then(url=>{if(image.isConnected){image.src=url;link.href=url;}}).catch(()=>link.remove());
       link.append(image);
       container.append(link);
     }
@@ -137,7 +131,8 @@ export function initializeComments(context) {
       throw new Error('attachment_invalid');
     }
     if (file.size > (context.maxAttachmentBytes || 5_000_000)) throw new Error('attachment_too_large');
-    const response = await fetch('/api/comments/media/', {
+    const response = await serviceFetch('upload', {
+      thread,
       method: 'POST',
       credentials: 'same-origin',
       cache: 'no-store',
@@ -145,8 +140,7 @@ export function initializeComments(context) {
         ...sessionHeaders(),
         Accept: 'application/json',
         'Content-Type': file.type,
-        'X-Comments-CSRF': session?.csrf || '',
-        'X-Comments-Thread': thread
+        'X-Comments-CSRF': session?.csrf || ''
       },
       body: file
     });
@@ -164,7 +158,7 @@ export function initializeComments(context) {
     const wrapper=document.createElement('span');wrapper.className='comment-avatar';wrapper.setAttribute('aria-hidden','true');
     wrapper.dataset.initial=String(name || '?').slice(0,1).toUpperCase();
     if(Number.isSafeInteger(id) && id>0) {
-      const image=document.createElement('img');image.src='/api/comments/avatar/'+id;image.alt='';image.width=40;image.height=40;image.loading='lazy';image.decoding='async';
+      const image=document.createElement('img');imageResource(String(id),'avatar').then(url=>{if(image.isConnected)image.src=url;}).catch(()=>image.remove());image.alt='';image.width=40;image.height=40;image.loading='lazy';image.decoding='async';
       image.addEventListener('error',()=>image.remove(),{once:true});wrapper.append(image);
     }
     return wrapper;
@@ -195,6 +189,7 @@ export function initializeComments(context) {
     const body = document.createElement('p');
     body.className = 'comment-body';
     body.textContent = comment.body || '';
+    if (/:[a-z][a-z0-9-]{1,63}:/.test(comment.body || ''))loadStickerCatalog().then(packs=>{if(body.isConnected)renderStickerText(body,comment.body,packs,context.locale);}).catch(()=>{});
     article.append(header, body);
     if (Array.isArray(comment.attachments) && comment.attachments.length) {
       const media = document.createElement('div');
@@ -217,7 +212,7 @@ export function initializeComments(context) {
         if (!confirming) {confirming=true;remove.textContent=messages.deleteConfirm;cancel.hidden=false;return;}
         remove.disabled=true;cancel.disabled=true;
         try {
-          const data=await requestJson('/api/comments',{method:'DELETE',headers:{'Content-Type':'application/json','X-Comments-CSRF':session.csrf},body:JSON.stringify({thread,commentId:comment.id})});
+          const data=await requestJson('comments',{method:'DELETE',headers:{'Content-Type':'application/json','X-Comments-CSRF':session.csrf},body:JSON.stringify({commentId:comment.id})});
           if (!data?.ok) throw new Error('comments_request_failed');
           item.remove();setStatus(messages.deleted);
           (list.querySelector('[data-comments-delete]') || (!form?.hidden ? bodyInput : logout))?.focus();
@@ -241,8 +236,9 @@ export function initializeComments(context) {
     list.replaceChildren(...comments.map(renderComment));
   }
 
-  async function requestJson(url, options) {
-    const response = await fetch(url, {
+  async function requestJson(action, options) {
+    const response = await serviceFetch(action, {
+      thread,
       credentials: 'same-origin',
       cache: 'no-store',
       ...options,
@@ -261,9 +257,9 @@ export function initializeComments(context) {
   async function loadComments() {
     setStatus(messages.loading);
     try {
-      const data = await requestJson('/api/comments?thread=' + encodeURIComponent(thread));
+      const data = await requestJson('comments');
       const comments = Array.isArray(data?.comments) ? data.comments : [];
-      try { session = await requestJson('/api/comments/session'); if(!session?.user && bearer){bearer=null;try{sessionStorage.removeItem(tokenKey);}catch{}session=await requestJson('/api/comments/session');} } catch { session = null; }
+      try { session = await requestJson('session'); if(!session?.user && bearer){bearer=null;try{sessionStorage.removeItem(tokenKey);}catch{}session=await requestJson('session');} } catch { session = null; }
       renderComments(comments);
       if (form) form.hidden = !session?.user || !!data.closed;
       if (account) account.hidden = !session?.user;
@@ -286,29 +282,16 @@ export function initializeComments(context) {
   const stickerPanel=root.querySelector('[data-comments-stickers]');
   const stickerPacks=root.querySelector('[data-comments-sticker-packs]');
   const stickerGrid=root.querySelector('[data-comments-sticker-grid]');
-  let catalogPromise;
-  const localized=value => typeof value==='string' ? value : value?.[document.documentElement.lang] || value?.en || '';
-  const stickerPath=value => typeof value==='string' && /^\/commentnest\/stickers\/[A-Za-z0-9_/-]+(?:\.[a-f0-9]{16})?\.(png|jpe?g|gif|webp|avif)$/.test(value) && !value.includes('//');
+  const localized=value=>localizedSticker(value,context.locale);
   function showPack(pack) {
     stickerGrid.replaceChildren();
     for(const tab of stickerPacks.children)tab.setAttribute('aria-pressed',String(tab.dataset.pack===pack.id));
-    for(const entry of pack.items.slice(0,100)) {
-      if(!stickerPath(entry.src) || !localized(entry.label))continue;
-      const button=document.createElement('button');button.type='button';button.className='comment-sticker';button.setAttribute('aria-label',localized(entry.label));button.title=localized(entry.label);
-      const image=document.createElement('img');image.src=entry.src;image.alt='';image.loading='lazy';image.width=64;image.height=64;button.append(image);
-      button.addEventListener('click',async()=>{
-        if(attachmentInput.disabled || !session?.user)return;
-        if(uploadedAttachments.length>=4){setStatus(messages.attachmentHelp,true);return;}
-        attachmentInput.disabled=true;submit.disabled=true;stickerToggle.disabled=true;button.disabled=true;
-        setStatus(messages.uploading);
-        try {
-          const response=await fetch(entry.src,{credentials:'same-origin',redirect:'error'});
-          if(!response.ok || Number(response.headers.get('content-length'))>(context.maxAttachmentBytes || 5_000_000))throw new Error('attachment_invalid');
-          const blob=await response.blob();
-          const uploaded=await uploadAttachment(blob);uploadedAttachments.push(uploaded);renderPendingAttachments();
-          setStatus(messages.attachmentHelp);
-        }catch(error){setStatus(error.message==='attachment_too_large'?messages.attachmentTooLarge:backendMessage(error),true);}
-        finally{attachmentInput.disabled=false;submit.disabled=false;stickerToggle.disabled=false;button.disabled=false;}
+    for(const entry of pack.items) {
+      const button=document.createElement('button');button.type='button';button.className='comment-sticker';
+      button.setAttribute('aria-label',localized(entry.label));button.title=localized(entry.label);
+      button.append(stickerImage(entry,context.locale,true));
+      button.addEventListener('click',()=>{
+        if(session?.user && !submit.disabled)insertSticker(bodyInput,entry.token);
       });
       stickerGrid.append(button);
     }
@@ -318,18 +301,11 @@ export function initializeComments(context) {
     stickerPanel.hidden=!stickerPanel.hidden;stickerToggle.setAttribute('aria-expanded',String(!stickerPanel.hidden));
     if(stickerPanel.hidden)return;
     try {
-      if(!catalogPromise)catalogPromise=fetch('/commentnest/stickers/packs.json',{credentials:'same-origin',redirect:'error'}).then(async response=>{
-        if(!response.ok)throw new Error('sticker_catalog_unavailable');
-        const text=await response.text();if(text.length>200_000)throw new Error('sticker_catalog_unavailable');
-        const catalog=JSON.parse(text);
-        if(!Array.isArray(catalog.packs))throw new Error('sticker_catalog_unavailable');
-        return catalog.packs.slice(0,20).filter(pack=>typeof pack.id==='string' && localized(pack.label) && Array.isArray(pack.items));
-      }).catch(error=>{catalogPromise=null;throw error;});
-      const packs=await catalogPromise;
-      if(!packs.length)throw new Error('sticker_catalog_unavailable');
+      const packs=await loadStickerCatalog();
       if(!stickerPacks.children.length) {
         for(const pack of packs) {
-          const button=document.createElement('button');button.type='button';button.className='comment-secondary';button.textContent=localized(pack.label);button.dataset.pack=pack.id;
+          const button=document.createElement('button');button.type='button';button.className='comment-secondary';
+          button.textContent=localized(pack.label);button.dataset.pack=pack.id;
           button.addEventListener('click',()=>showPack(pack));stickerPacks.append(button);
         }
         showPack(packs[0]);
@@ -376,12 +352,10 @@ export function initializeComments(context) {
     if (stickerToggle) stickerToggle.disabled = true;
     setStatus(messages.loading);
     try {
-      const data = await requestJson('/api/comments', {
+      const data = await requestJson('comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Comments-CSRF': session?.csrf || '' },
         body: JSON.stringify({
-          thread,
-          title,
           body: String(bodyInput?.value || ''),
           attachments: uploadedAttachments.map(({url, receipt}) => ({url, receipt})),
           company: String(companyInput?.value || '')
@@ -418,7 +392,7 @@ export function initializeComments(context) {
   logout?.addEventListener('click', async () => {
     logout.disabled = true;
     try {
-      await requestJson('/api/comments/logout', { method: 'POST', headers: { 'X-Comments-CSRF': session?.csrf || '' } });
+      await requestJson('logout', { method: 'POST', headers: { 'X-Comments-CSRF': session?.csrf || '' } });
       bearer=null;
       try {sessionStorage.removeItem(tokenKey);}catch{}
       await loadComments();

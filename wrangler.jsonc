@@ -13,11 +13,23 @@
   "assets": {
     "directory": "./dist",
     "binding": "COMMENTNEST_ASSETS",
+    "not_found_handling": "404-page",
     "run_worker_first": [
-      "/api/comments",
-      "/api/comments/*",
+      "/api", "/frame", "/auth", "/api/comments",
+      "/api/comments/session",
+      "/api/comments/login",
+      "/api/comments/logout",
+      "/api/comments/callback",
+      "/api/comments/media/*",
+      "/api/comments/avatar/*",
       "/commentnest/embed",
-      "/commentnest/auth-complete"
+      "/commentnest/auth-complete",
+      "!/",
+      "!/.env*",
+      "!/.git/*",
+      "!/.well-known/*",
+      "!/wp-*",
+      "!/commentnest/*.*"
     ]
   },
   "durable_objects": {

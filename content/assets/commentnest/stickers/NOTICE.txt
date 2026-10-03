@@ -1,5 +1,0 @@
-Noto Emoji image assets by Google and contributors.
-Apache License 2.0. Images copied without modification.
-Source: https://github.com/googlefonts/noto-emoji/tree/aac7ccaa4d1dea4543453b96f7d6fc47066a57ff/png/128
-Pinned release: v2020-09-16-unicode13_1
-Only expressions and reactions are included; no flag assets or fonts.

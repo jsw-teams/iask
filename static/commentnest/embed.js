@@ -1,7 +1,8 @@
 import {loadDictionary,direction,canonicalLocale} from './i18n.js';
 import {renderWidget} from './markup.js';
 import {initializeComments} from './comments.js';
-const context=JSON.parse(document.getElementById('commentnest-context').textContent);
+const initial=JSON.parse(document.getElementById('commentnest-context').textContent);
+async function start(context) {
 const {locale,messages}=await loadDictionary(context.locale,context.localeFiles);
 document.documentElement.lang=locale;
 document.documentElement.dir=direction(context.locale);
@@ -34,3 +35,14 @@ window.addEventListener('message',event=>{
 });
 post({type:'commentnest:ready',title:messages.commentsTitle});
 resize();
+
+}
+if(initial.thread)void start(initial);
+else {
+  let started=false;
+  window.addEventListener('message',event=>{
+    const data=event.data;
+    if(started || event.source!==parent || event.origin!==initial.parent || data?.type!=='commentnest:init' || !/^[a-f0-9]{32}$/.test(data.channel || '') || typeof data.thread!=='string' || !data.thread || data.thread.length>240 || /[\x00-\x1f\x7f]/.test(data.thread) || typeof data.title!=='string' || data.title.length>500)return;
+    started=true;void start({...initial,thread:data.thread,title:data.title,channel:data.channel,locale:canonicalLocale(data.locale),theme:['light','dark'].includes(data.theme)?data.theme:'auto'});
+  });
+}

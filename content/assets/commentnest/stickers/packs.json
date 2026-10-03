@@ -1,240 +1,280 @@
 {
   "packs": [
     {
-      "id": "faces",
+      "id": "blackbear",
       "label": {
-        "en": "Expressions",
-        "zh-CN": "表情",
-        "zh-SG": "表情",
-        "zh-TW": "表情"
+        "en": "Black bear",
+        "zh-CN": "黑熊",
+        "zh-SG": "黑熊",
+        "zh-TW": "黑熊",
+        "ar": "دب أسود",
+        "de": "Schwarzbär",
+        "es": "Oso negro",
+        "fr": "Ours noir",
+        "he": "דוב שחור",
+        "hi": "काला भालू",
+        "id": "Beruang hitam",
+        "it": "Orso nero",
+        "ja": "ツキノワグマ",
+        "ko": "반달가슴곰",
+        "pt": "Urso-negro",
+        "ru": "Чёрный медведь",
+        "vi": "Gấu đen"
       },
       "items": [
         {
+          "token": ":blackbear-wave:",
           "label": {
-            "en": "Grin",
-            "zh-CN": "开心",
-            "zh-SG": "开心",
-            "zh-TW": "開心"
+            "en": "Hello",
+            "zh-CN": "你好",
+            "zh-SG": "你好",
+            "zh-TW": "你好",
+            "ar": "مرحباً",
+            "de": "Hallo",
+            "es": "Hola",
+            "fr": "Bonjour",
+            "he": "שלום",
+            "hi": "नमस्ते",
+            "id": "Halo",
+            "it": "Ciao",
+            "ja": "こんにちは",
+            "ko": "안녕",
+            "pt": "Olá",
+            "ru": "Привет",
+            "vi": "Xin chào"
           },
-          "src": "/commentnest/stickers/noto/emoji_u1f600.png"
+          "src": "/commentnest/stickers/mascots/blackbear-wave.png"
         },
         {
+          "token": ":blackbear-approve:",
           "label": {
-            "en": "Laugh",
-            "zh-CN": "笑哭",
-            "zh-SG": "笑哭",
-            "zh-TW": "笑哭"
+            "en": "Thumbs up",
+            "zh-CN": "点赞",
+            "zh-SG": "点赞",
+            "zh-TW": "讚",
+            "ar": "أحسنت",
+            "de": "Daumen hoch",
+            "es": "Bien hecho",
+            "fr": "Bravo",
+            "he": "כל הכבוד",
+            "hi": "शाबाश",
+            "id": "Jempol",
+            "it": "Ben fatto",
+            "ja": "いいね",
+            "ko": "좋아요",
+            "pt": "Muito bem",
+            "ru": "Отлично",
+            "vi": "Thích"
           },
-          "src": "/commentnest/stickers/noto/emoji_u1f602.png"
+          "src": "/commentnest/stickers/mascots/blackbear-approve.png"
         },
         {
+          "token": ":blackbear-think:",
           "label": {
-            "en": "Wink",
-            "zh-CN": "眨眼",
-            "zh-SG": "眨眼",
-            "zh-TW": "眨眼"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f609.png"
-        },
-        {
-          "label": {
-            "en": "Love",
-            "zh-CN": "喜欢",
-            "zh-SG": "喜欢",
-            "zh-TW": "喜歡"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f60d.png"
-        },
-        {
-          "label": {
-            "en": "Think",
+            "en": "Thinking",
             "zh-CN": "思考",
             "zh-SG": "思考",
-            "zh-TW": "思考"
+            "zh-TW": "思考",
+            "ar": "أفكر",
+            "de": "Nachdenken",
+            "es": "Pensando",
+            "fr": "Réflexion",
+            "he": "חושב",
+            "hi": "सोचते हुए",
+            "id": "Berpikir",
+            "it": "Pensieroso",
+            "ja": "考え中",
+            "ko": "생각 중",
+            "pt": "Pensando",
+            "ru": "Думает",
+            "vi": "Suy nghĩ"
           },
-          "src": "/commentnest/stickers/noto/emoji_u1f914.png"
+          "src": "/commentnest/stickers/mascots/blackbear-think.png"
         },
         {
+          "token": ":blackbear-celebrate:",
           "label": {
-            "en": "Cry",
-            "zh-CN": "哭泣",
-            "zh-SG": "哭泣",
-            "zh-TW": "哭泣"
+            "en": "Celebrating",
+            "zh-CN": "庆祝",
+            "zh-SG": "庆祝",
+            "zh-TW": "慶祝",
+            "ar": "احتفال",
+            "de": "Feiern",
+            "es": "Celebración",
+            "fr": "Fête",
+            "he": "חוגג",
+            "hi": "जश्न",
+            "id": "Merayakan",
+            "it": "Festa",
+            "ja": "お祝い",
+            "ko": "축하",
+            "pt": "Comemoração",
+            "ru": "Празднует",
+            "vi": "Ăn mừng"
           },
-          "src": "/commentnest/stickers/noto/emoji_u1f62d.png"
+          "src": "/commentnest/stickers/mascots/blackbear-celebrate.png"
         },
         {
+          "token": ":blackbear-perfect:",
           "label": {
-            "en": "Surprise",
-            "zh-CN": "惊讶",
-            "zh-SG": "惊讶",
-            "zh-TW": "驚訝"
+            "en": "Perfect score",
+            "zh-CN": "满分",
+            "zh-SG": "满分",
+            "zh-TW": "滿分",
+            "ar": "الدرجة الكاملة",
+            "de": "Volle Punktzahl",
+            "es": "Puntuación perfecta",
+            "fr": "Note parfaite",
+            "he": "ציון מושלם",
+            "hi": "पूरे अंक",
+            "id": "Nilai sempurna",
+            "it": "Punteggio perfetto",
+            "ja": "満点",
+            "ko": "만점",
+            "pt": "Pontuação perfeita",
+            "ru": "Высший балл",
+            "vi": "Điểm tuyệt đối"
           },
-          "src": "/commentnest/stickers/noto/emoji_u1f631.png"
-        },
-        {
-          "label": {
-            "en": "Sleep",
-            "zh-CN": "困了",
-            "zh-SG": "困了",
-            "zh-TW": "睏了"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f634.png"
-        },
-        {
-          "label": {
-            "en": "LOL",
-            "zh-CN": "大笑",
-            "zh-SG": "大笑",
-            "zh-TW": "大笑"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f923.png"
-        },
-        {
-          "label": {
-            "en": "Cool",
-            "zh-CN": "酷",
-            "zh-SG": "酷",
-            "zh-TW": "酷"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f60e.png"
-        },
-        {
-          "label": {
-            "en": "Eye roll",
-            "zh-CN": "无语",
-            "zh-SG": "无语",
-            "zh-TW": "無語"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f644.png"
-        },
-        {
-          "label": {
-            "en": "Affection",
-            "zh-CN": "暖心",
-            "zh-SG": "暖心",
-            "zh-TW": "暖心"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f970.png"
+          "src": "/commentnest/stickers/mascots/blackbear-perfect.png"
         }
       ]
     },
     {
-      "id": "reactions",
+      "id": "panda",
       "label": {
-        "en": "Reactions",
-        "zh-CN": "动作与反应",
-        "zh-SG": "动作与反应",
-        "zh-TW": "動作與反應"
+        "en": "Panda",
+        "zh-CN": "熊猫",
+        "zh-SG": "熊猫",
+        "zh-TW": "熊貓",
+        "ar": "باندا",
+        "de": "Panda",
+        "es": "Panda",
+        "fr": "Panda",
+        "he": "פנדה",
+        "hi": "पांडा",
+        "id": "Panda",
+        "it": "Panda",
+        "ja": "パンダ",
+        "ko": "판다",
+        "pt": "Panda",
+        "ru": "Панда",
+        "vi": "Gấu trúc"
       },
       "items": [
         {
+          "token": ":panda-wave:",
           "label": {
-            "en": "Thumbs up",
-            "zh-CN": "赞",
-            "zh-SG": "赞",
-            "zh-TW": "讚"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f44d.png"
-        },
-        {
-          "label": {
-            "en": "Applause",
-            "zh-CN": "鼓掌",
-            "zh-SG": "鼓掌",
-            "zh-TW": "鼓掌"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f44f.png"
-        },
-        {
-          "label": {
-            "en": "Thanks",
-            "zh-CN": "感谢",
-            "zh-SG": "感谢",
-            "zh-TW": "感謝"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f64f.png"
-        },
-        {
-          "label": {
-            "en": "Wave",
+            "en": "Hello",
             "zh-CN": "你好",
             "zh-SG": "你好",
-            "zh-TW": "你好"
+            "zh-TW": "你好",
+            "ar": "مرحباً",
+            "de": "Hallo",
+            "es": "Hola",
+            "fr": "Bonjour",
+            "he": "שלום",
+            "hi": "नमस्ते",
+            "id": "Halo",
+            "it": "Ciao",
+            "ja": "こんにちは",
+            "ko": "안녕",
+            "pt": "Olá",
+            "ru": "Привет",
+            "vi": "Xin chào"
           },
-          "src": "/commentnest/stickers/noto/emoji_u1f44b.png"
+          "src": "/commentnest/stickers/mascots/panda-wave.png"
         },
         {
+          "token": ":panda-approve:",
           "label": {
-            "en": "Celebrate",
+            "en": "Thumbs up",
+            "zh-CN": "点赞",
+            "zh-SG": "点赞",
+            "zh-TW": "讚",
+            "ar": "أحسنت",
+            "de": "Daumen hoch",
+            "es": "Bien hecho",
+            "fr": "Bravo",
+            "he": "כל הכבוד",
+            "hi": "शाबाश",
+            "id": "Jempol",
+            "it": "Ben fatto",
+            "ja": "いいね",
+            "ko": "좋아요",
+            "pt": "Muito bem",
+            "ru": "Отлично",
+            "vi": "Thích"
+          },
+          "src": "/commentnest/stickers/mascots/panda-approve.png"
+        },
+        {
+          "token": ":panda-think:",
+          "label": {
+            "en": "Thinking",
+            "zh-CN": "思考",
+            "zh-SG": "思考",
+            "zh-TW": "思考",
+            "ar": "أفكر",
+            "de": "Nachdenken",
+            "es": "Pensando",
+            "fr": "Réflexion",
+            "he": "חושב",
+            "hi": "सोचते हुए",
+            "id": "Berpikir",
+            "it": "Pensieroso",
+            "ja": "考え中",
+            "ko": "생각 중",
+            "pt": "Pensando",
+            "ru": "Думает",
+            "vi": "Suy nghĩ"
+          },
+          "src": "/commentnest/stickers/mascots/panda-think.png"
+        },
+        {
+          "token": ":panda-celebrate:",
+          "label": {
+            "en": "Celebrating",
             "zh-CN": "庆祝",
             "zh-SG": "庆祝",
-            "zh-TW": "慶祝"
+            "zh-TW": "慶祝",
+            "ar": "احتفال",
+            "de": "Feiern",
+            "es": "Celebración",
+            "fr": "Fête",
+            "he": "חוגג",
+            "hi": "जश्न",
+            "id": "Merayakan",
+            "it": "Festa",
+            "ja": "お祝い",
+            "ko": "축하",
+            "pt": "Comemoração",
+            "ru": "Празднует",
+            "vi": "Ăn mừng"
           },
-          "src": "/commentnest/stickers/noto/emoji_u1f389.png"
+          "src": "/commentnest/stickers/mascots/panda-celebrate.png"
         },
         {
+          "token": ":panda-perfect:",
           "label": {
-            "en": "Fire",
-            "zh-CN": "火热",
-            "zh-SG": "火热",
-            "zh-TW": "火熱"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f525.png"
-        },
-        {
-          "label": {
-            "en": "Rocket",
-            "zh-CN": "起飞",
-            "zh-SG": "起飞",
-            "zh-TW": "起飛"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f680.png"
-        },
-        {
-          "label": {
-            "en": "Heart",
-            "zh-CN": "爱心",
-            "zh-SG": "爱心",
-            "zh-TW": "愛心"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u2764.png"
-        },
-        {
-          "label": {
-            "en": "100",
+            "en": "Perfect score",
             "zh-CN": "满分",
             "zh-SG": "满分",
-            "zh-TW": "滿分"
+            "zh-TW": "滿分",
+            "ar": "الدرجة الكاملة",
+            "de": "Volle Punktzahl",
+            "es": "Puntuación perfecta",
+            "fr": "Note parfaite",
+            "he": "ציון מושלם",
+            "hi": "पूरे अंक",
+            "id": "Nilai sempurna",
+            "it": "Punteggio perfetto",
+            "ja": "満点",
+            "ko": "만점",
+            "pt": "Pontuação perfeita",
+            "ru": "Высший балл",
+            "vi": "Điểm tuyệt đối"
           },
-          "src": "/commentnest/stickers/noto/emoji_u1f4af.png"
-        },
-        {
-          "label": {
-            "en": "Strength",
-            "zh-CN": "加油",
-            "zh-SG": "加油",
-            "zh-TW": "加油"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f4aa.png"
-        },
-        {
-          "label": {
-            "en": "Coffee",
-            "zh-CN": "咖啡",
-            "zh-SG": "咖啡",
-            "zh-TW": "咖啡"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u2615.png"
-        },
-        {
-          "label": {
-            "en": "Look",
-            "zh-CN": "围观",
-            "zh-SG": "围观",
-            "zh-TW": "圍觀"
-          },
-          "src": "/commentnest/stickers/noto/emoji_u1f440.png"
+          "src": "/commentnest/stickers/mascots/panda-perfect.png"
         }
       ]
     }

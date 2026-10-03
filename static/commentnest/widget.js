@@ -6,9 +6,9 @@ export function mount(root, options={}) {
   if(backend.protocol!=='https:' || backend.username || backend.password || backend.pathname!=='/' || backend.search || backend.hash)throw new Error('Invalid iask backend URL');
   root.dataset.commentnestMounted='true';
   const channel=Array.from(crypto.getRandomValues(new Uint8Array(16)),value=>value.toString(16).padStart(2,'0')).join('');
-  const address=new URL('/commentnest/embed',backend);
+  const address=new URL('/frame',backend);
   const inferredTheme=document.documentElement.dataset.theme;
-  address.search=new URLSearchParams({thread:options.thread || root.dataset.serviceThread || root.dataset.commentsThread || '',title:options.title || root.dataset.serviceTitle || root.dataset.commentsTitle || document.title,locale:document.documentElement.lang || 'en',parent:location.origin,channel,theme:['light','dark'].includes(inferredTheme)?inferredTheme:'auto'});
+  const frameContext={thread:options.thread || root.dataset.serviceThread || root.dataset.commentsThread || '',title:options.title || root.dataset.serviceTitle || root.dataset.commentsTitle || document.title,locale:document.documentElement.lang || 'en',channel,theme:['light','dark'].includes(inferredTheme)?inferredTheme:'auto'};
   const frame=document.createElement('iframe');
   frame.title=root.dataset.commentsLabel || root.querySelector('h2')?.textContent || 'iask';
   frame.referrerPolicy='no-referrer';
@@ -27,6 +27,7 @@ export function mount(root, options={}) {
   };
   window.addEventListener('message',listen);
   frame.addEventListener('load',()=>{
+    frame.contentWindow?.postMessage({type:'commentnest:init',...frameContext},backend.origin);
     const send=sendTheme;
     send();
     const observer=new MutationObserver(send);observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class','style']});

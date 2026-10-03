@@ -8,8 +8,16 @@
     "api/service.js": {"maxDuration": 60, "includeFiles": "dist/commentnest/**"}
   },
   "rewrites": [
-    {"source": "/api/comments/:path*", "destination": "/api/service"},
+    {"source":"/auth","destination":"/api/service"},
+    {"source":"/api","destination":"/api/service"},
+    {"source":"/frame","destination":"/api/service"},
     {"source": "/api/comments", "destination": "/api/service"},
+    {"source": "/api/comments/session", "destination": "/api/service"},
+    {"source": "/api/comments/login", "destination": "/api/service"},
+    {"source": "/api/comments/logout", "destination": "/api/service"},
+    {"source": "/api/comments/callback", "destination": "/api/service"},
+    {"source": "/api/comments/media/:path*", "destination": "/api/service"},
+    {"source": "/api/comments/avatar/:id", "destination": "/api/service"},
     {"source": "/commentnest/embed", "destination": "/api/service"},
     {"source": "/commentnest/auth-complete", "destination": "/api/service"}
   ],

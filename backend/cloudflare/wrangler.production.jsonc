@@ -7,6 +7,7 @@
   "workers_dev": false,
   "preview_urls": false,
   "keep_vars": true,
+  "secrets": {"required": ["COMMENTNEST_GITHUB_APP_PRIVATE_KEY", "COMMENTNEST_GITHUB_APP_CLIENT_SECRET"]},
   "vars": {
     "COMMENTNEST_REPOSITORY": "jsw-teams/web",
     "COMMENTNEST_SITE_ORIGIN": "https://iask.js.gripe",
@@ -18,7 +19,12 @@
     "directory": "../../dist",
     "binding": "COMMENTNEST_ASSETS",
     "html_handling": "auto-trailing-slash",
-    "run_worker_first": ["/api/comments", "/api/comments/*", "/commentnest/embed", "/commentnest/auth-complete"]
+    "not_found_handling": "404-page",
+    "run_worker_first": [
+      "/api", "/frame", "/auth", "/api/comments", "/api/comments/session", "/api/comments/login", "/api/comments/logout", "/api/comments/callback",
+      "/api/comments/media/*", "/api/comments/avatar/*", "/commentnest/embed", "/commentnest/auth-complete",
+      "!/", "!/.env*", "!/.git/*", "!/.well-known/*", "!/wp-*", "!/commentnest/*.*"
+    ]
   },
   "durable_objects": {
     "bindings": [{"name": "COMMENTNEST_THREADS", "class_name": "CommentCoordinator"}]

@@ -1,3 +1,4 @@
+import {requestThread} from './transport.js';
 import { dataScope } from './scope.js';
 import { commentEnvironment } from './environment.js';
 import { signingEnvironment, storedSigningKeys } from './keys.js';
@@ -378,7 +379,7 @@ async function handleCommentMedia(request, env) {
   if (!session) return json({ error: 'login_required' }, 401);
   if (request.headers.get('x-comments-csrf') !== session.csrf) return json({ error: 'invalid_csrf' }, 403);
 
-  const thread = request.headers.get('x-comments-thread')?.trim() || '';
+  const thread = requestThread(request)?.trim() || '';
   if (!validThread(thread)) return json({ error: 'invalid_thread' }, 400);
   const type = request.headers.get('content-type')?.split(';',1)[0].trim().toLowerCase() || '';
   if (!COMMENT_MEDIA_TYPES.has(type)) return json({ error: 'unsupported_media_type' }, 415);
@@ -455,7 +456,7 @@ async function handleComments(request, env) {
 
   const url = new URL(request.url);
   if (request.method === 'GET') {
-    const thread = url.searchParams.get('thread');
+    const thread = requestThread(request) ?? url.searchParams.get('thread');
     if (!validThread(thread)) return json({ error: 'invalid_thread' }, 400);
     try {
       const published = await publishedThread(request, env, thread);
@@ -498,7 +499,7 @@ async function handleComments(request, env) {
   catch { return json({ error: 'invalid_json' }, 400); }
 
   if (!payload || Array.isArray(payload) || typeof payload !== 'object') return json({ error: 'invalid_comment' }, 400);
-  const thread = typeof payload.thread === 'string' ? payload.thread.trim() : '';
+  const thread = requestThread(request) ?? (typeof payload.thread === 'string' ? payload.thread.trim() : '');
   await settings.storage?.delete('public-read');
   if (request.method === 'DELETE') {
     if (!validThread(thread) || !/^[1-9]\d{0,15}$/.test(String(payload.commentId)) || !Number.isSafeInteger(Number(payload.commentId))) {
@@ -650,14 +651,14 @@ export async function handleCommentRequest(request, env, { coordinated = false }
     if (request.method !== 'GET' && url.pathname === '/api/comments') {
       const bytes = await readApiBody(request.clone());
       if (bytes?.error) return json({ error: bytes.error }, bytes.status);
-      try { thread = JSON.parse(new TextDecoder().decode(bytes))?.thread?.trim(); }
+      try { thread = requestThread(request) ?? JSON.parse(new TextDecoder().decode(bytes))?.thread?.trim(); }
       catch { return json({ error: 'invalid_json' }, 400); }
     } else if(mediaRead) {
       const path=url.pathname.slice('/api/comments/media/'.length);
       if(!new RegExp('^'+settings.namespace+'/[0-9a-f]{24}/[0-9a-f-]{36}\\.(png|jpg|gif|webp|avif)$').test(path))return json({error:'not_found'},404);
       thread=await mediaThread(request,env,path.split('/')[1]);
       if(thread instanceof Response)return thread;
-    } else thread = request.method === 'GET' ? url.searchParams.get('thread') : request.headers.get('x-comments-thread');
+    } else thread = request.method === 'GET' ? (requestThread(request) ?? url.searchParams.get('thread')) : requestThread(request);
     if (!validThread(thread)) return json({ error: 'invalid_thread' }, 400);
     if (!env.REPORELAY_THREADS) return json({ error: 'comments_coordinator_unavailable' }, 503);
     const id = env.REPORELAY_THREADS.idFromName(settings.repository + ':' + settings.namespace + ':' + thread);

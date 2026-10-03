@@ -14,9 +14,13 @@ test('built widget has a coherent fingerprinted dependency graph and immutable s
   for(const name of ['i18n.js','markup.js','comments.js'])assert.ok(embed.includes(manifest[name]));
   assert.ok((await readFile(join(root,manifest['i18n.js']),'utf8')).includes(manifest['locales.js']));
   const comments=await readFile(join(root,manifest['comments.js']),'utf8');
-  const catalogPath=comments.match(/\/commentnest\/(stickers\/packs\.[a-f0-9]{16}\.json)/)[1];
+  assert.ok(comments.includes(manifest['stickers.js']));
+  const stickers=await readFile(join(root,manifest['stickers.js']),'utf8');
+  const catalogPath=stickers.match(/\/commentnest\/(stickers\/packs\.[a-f0-9]{16}\.json)/)[1];
   const catalog=JSON.parse(await readFile(join(root,catalogPath),'utf8'));
-  for(const pack of catalog.packs)for(const item of pack.items){assert.match(item.src,/\.[a-f0-9]{16}\.png$/);assert.ok((await readFile(join(dir,item.src.slice(1)))).length>0);}
+  assert.equal(catalog.packs.length,2);assert.ok(catalog.packs.every(pack=>pack.items.length===5));
+  assert.equal(new Set(catalog.packs.flatMap(pack=>pack.items.map(item=>item.src))).size,10);
+  for(const pack of catalog.packs)for(const item of pack.items){assert.match(item.src,/\.[a-f0-9]{16}\.webp$/);const bytes=await readFile(join(dir,item.src.slice(1)));assert.ok(bytes.length>0 && bytes.length<30000);const {default:sharp}=await import('sharp');const info=await sharp(bytes).metadata();assert.equal(info.width,192);assert.equal(info.height,192);assert.ok(info.hasAlpha);}
   const env={COMMENTNEST_SITE_ORIGIN:'https://comments.example',COMMENTNEST_WEBSITE_ORIGIN:'https://website.example',ASSETS:{fetch:async request=>new Response(await readFile(join(dir,new URL(request.url).pathname.slice(1))))}};
   const params=new URLSearchParams({parent:env.COMMENTNEST_WEBSITE_ORIGIN,thread:'post',channel:'a'.repeat(32)});
   const html=await (await handleServiceRequest(new Request(env.COMMENTNEST_SITE_ORIGIN+'/commentnest/embed?'+params),env)).text();assert.ok(html.includes(manifest['embed.js']));assert.ok(html.includes(manifest['widget.css']));

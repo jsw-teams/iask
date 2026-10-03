@@ -40,6 +40,7 @@
     "iask": "tools/cli.mjs"
   },
   "devDependencies": {
+    "miniflare": "5.20261001.0-alpha",
     "playwright": "^1.63.0",
     "wrangler": "^4.145.0"
   },
@@ -69,6 +70,7 @@
     }
   },
   "dependencies": {
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "sharp": "0.35.5"
   }
 }

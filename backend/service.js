@@ -1,3 +1,4 @@
+import {transportRequest} from './transport.js';
 import {handleCommentRequest} from './comments.js';
 import {commentEnvironment} from './environment.js';
 import {signingEnvironment} from './keys.js';
@@ -10,14 +11,31 @@ function origin(value) {
   try {const url=new URL(value);return url.protocol==='https:' && !url.username && !url.password && url.pathname==='/' && !url.search && !url.hash ? url.origin : null;}catch{return null;}
 }
 export async function handleServiceRequest(request, suppliedEnv) {
+  const fixedApi=new URL(request.url).pathname==='/api';
+  const action=request.headers.get('X-Service-Action');
+  request=transportRequest(request);
+  if(request instanceof Response)return request;
   const env=commentEnvironment(suppliedEnv), url=new URL(request.url);
-  if(url.pathname.startsWith('/api/comments')) return handleCommentRequest(request,env);
-  if(!url.pathname.startsWith('/commentnest/'))return null;
+  if(url.pathname.startsWith('/api/comments')) {
+    const response=await handleCommentRequest(request,env);
+    if(fixedApi && action==='login' && response.status===303) {
+      const headers=new Headers(response.headers);headers.delete('Location');headers.set('Content-Type','application/json');
+      return new Response(JSON.stringify({url:response.headers.get('Location')}),{headers});
+    }
+    if(fixedApi){const headers=new Headers(response.headers);headers.set('Vary','X-Service-Action, X-Service-Resource');return new Response(response.body,{status:response.status,headers});}
+    return response;
+  }
+  if(!url.pathname.startsWith('/commentnest/') && !['/frame','/auth'].includes(url.pathname))return null;
   if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405,headers:{Allow:'GET, HEAD'}});
   const website=origin(env.COMMENTNEST_WEBSITE_ORIGIN || env.REPORELAY_SITE_ORIGIN);
   const service=origin(env.REPORELAY_SITE_ORIGIN);
   if(!website || service!==url.origin)return new Response('Comment service is not configured',{status:503});
   const nonce=crypto.randomUUID().replaceAll('-','');
+  if(url.pathname==='/auth') {
+    if(url.search)return new Response('Invalid authentication context',{status:400});
+    const script=`let started=false;window.addEventListener('message',async event=>{const data=event.data;if(started||event.source!==opener||event.origin!==location.origin||data?.type!=='commentnest:login-start'||!/^[a-f0-9]{32}$/.test(data.channel||''))return;started=true;const status=document.getElementById('status');status.textContent=String(data.loading||'').slice(0,500);try{const response=await fetch('/api',{headers:{'X-Service-Action':'login','X-Service-Channel':data.channel},credentials:'same-origin',cache:'no-store',redirect:'error'});if(!response.ok)throw new Error();const result=await response.json(),target=new URL(result.url);if(target.origin!=='https://github.com'||target.pathname!=='/login/oauth/authorize')throw new Error();location.replace(target.href);}catch{status.textContent=String(data.error||'').slice(0,500);}});if(opener)opener.postMessage({type:'commentnest:login-ready'},location.origin);`;
+    return html('<!doctype html><meta charset="utf-8"><title>iask</title><main id="status" role="status"></main><script nonce="'+nonce+'">'+script+'</script>',"default-src 'none'; script-src 'nonce-"+nonce+"'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",request);
+  }
   if(url.pathname==='/commentnest/auth-complete') {
     const channel=url.searchParams.get('channel');
     if(!/^[a-f0-9]{32}$/.test(channel || ''))return new Response('Invalid login channel',{status:400});
@@ -27,15 +45,16 @@ export async function handleServiceRequest(request, suppliedEnv) {
     const script=`if(window.opener){window.opener.postMessage(${json({type:'commentnest:login',channel,token})},location.origin);window.close();}`;
     return html('<!doctype html><meta charset="utf-8"><title>iask</title><p>You can close this window.</p><script nonce="'+nonce+'">'+script+'</script>',"default-src 'none'; script-src 'nonce-"+nonce+"'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",request);
   }
-  if(url.pathname==='/commentnest/embed') {
+  if(url.pathname==='/commentnest/embed' || url.pathname==='/frame') {
+    if(url.pathname==='/frame' && url.search)return new Response('Invalid widget context',{status:400});
     const parent=origin(url.searchParams.get('parent'));
     const channel=url.searchParams.get('channel');
     const thread=url.searchParams.get('thread');
-    if(parent!==website || !/^[a-f0-9]{32}$/.test(channel || '') || !thread || thread.length>240 || /[\x00-\x1f\x7f]/.test(thread))
+    if(url.pathname!=='/frame' && (parent!==website || !/^[a-f0-9]{32}$/.test(channel || '') || !thread || thread.length>240 || /[\x00-\x1f\x7f]/.test(thread)))
       return new Response('Invalid widget context',{status:400});
     const locale=canonicalLocale(url.searchParams.get('locale'));
     const theme=['light','dark'].includes(url.searchParams.get('theme'))?url.searchParams.get('theme'):'auto';
-    const context={thread,title:(url.searchParams.get('title') || '').slice(0,500),parent,channel,locale,theme,maxAttachmentBytes:env.REPORELAY_MAX_ATTACHMENT_BYTES || 5_000_000};
+    const context=url.pathname==='/frame'?{parent:website,maxAttachmentBytes:env.REPORELAY_MAX_ATTACHMENT_BYTES || 5_000_000}:{thread,title:(url.searchParams.get('title') || '').slice(0,500),parent,channel,locale,theme,maxAttachmentBytes:env.REPORELAY_MAX_ATTACHMENT_BYTES || 5_000_000};
     let manifest={};
     try {const response=await (env.COMMENTNEST_ASSETS||env.ASSETS)?.fetch(new Request(new URL('/commentnest/manifest.json',url)));if(response?.ok)manifest=await response.json();}catch{}
     context.localeFiles=manifest.localeFiles || {};

@@ -27,9 +27,9 @@ test('built language packs render regional tags, RTL, host colors and platform u
         const url=new URL(route.request().url());
         if(url.origin===website) return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="'+locale+'-ZZ" data-theme="dark"><style>body{margin:8px;background:#111827;color:#f9fafb}section{--canvas:#111827;--ink:#f9fafb;--accent:#222222;--surface:#1f2937}</style><main><section id="service"></section></main><script type="module">import{mount}from"'+service+'/commentnest/widget.js";mount(document.getElementById("service"),{backendUrl:"'+service+'",thread:"article",title:"Article"});</script></html>'});
         assert.equal(url.origin,service);
-        if(url.pathname==='/api/comments/session')return route.fulfill({json:{user:{id:17,login:'Reader'},csrf:'csrf'}});
-        if(url.pathname==='/api/comments')return route.fulfill({json:{comments:[],closed:false}});
-        const response=url.pathname==='/commentnest/embed' ? await handleServiceRequest(new Request(url),env) : await assets.fetch(new Request(url));
+        if(url.pathname==='/api' && route.request().headers()['x-service-action']==='session')return route.fulfill({json:{user:{id:17,login:'Reader'},csrf:'csrf'}});
+        if(url.pathname==='/api' && route.request().headers()['x-service-action']==='comments')return route.fulfill({json:{comments:[],closed:false}});
+        const response=url.pathname==='/frame' ? await handleServiceRequest(new Request(url),env) : await assets.fetch(new Request(url));
         return route.fulfill({status:response.status,headers:{...Object.fromEntries(response.headers),'Access-Control-Allow-Origin':'*'},body:Buffer.from(await response.arrayBuffer())});
       });
       const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
@@ -42,7 +42,7 @@ test('built language packs render regional tags, RTL, host colors and platform u
       assert.match(await frame.locator('#comment-attachment-help').textContent(),/4 MB/);
       assert.match(await frame.locator('[data-commentnest-comments]').getAttribute('data-comments-attachment-too-large'),/4 MB/);
       await page.waitForFunction(()=>parseInt(document.querySelector('iframe').style.height)>300);
-      await page.frames().find(frame=>frame.url().startsWith(service+'/commentnest/embed')).waitForFunction(()=>document.documentElement.style.getPropertyValue('--canvas')==='#111827');
+      await page.frames().find(frame=>frame.url().startsWith(service+'/frame')).waitForFunction(()=>document.documentElement.style.getPropertyValue('--canvas')==='#111827');
       assert.ok(await frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       const palette=await frame.locator('html').evaluate(node=>({ink:node.style.getPropertyValue('--ink'),canvas:node.style.getPropertyValue('--canvas'),accent:node.style.getPropertyValue('--accent')}));
       assert.equal(palette.canvas,'#111827');assert.ok(contrast(palette.ink,palette.canvas)>=4.5);assert.ok(contrast(palette.accent,palette.canvas)>=4.5,'Inaccessible host accent must fall back');

@@ -3,6 +3,7 @@ import {dictionaries} from '../static/commentnest/locales.js';
 import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import sharp from 'sharp';
 const fingerprint=bytes=>createHash('sha256').update(bytes).digest('hex').slice(0,16);
 export async function copyWidgetAssets(destination) {
   const target=resolve(destination,'commentnest');
@@ -11,12 +12,15 @@ export async function copyWidgetAssets(destination) {
   await cp(new URL('../static/commentnest/',import.meta.url),target,{recursive:true});
   await cp(new URL('../content/assets/commentnest/stickers/',import.meta.url),resolve(target,'stickers'),{recursive:true});
   const catalog=JSON.parse(await readFile(resolve(target,'stickers/packs.json'),'utf8'));
+  const hashedImages=new Map();
   for(const pack of catalog.packs)for(const item of pack.items){
+    if(hashedImages.has(item.src)){item.src=hashedImages.get(item.src);continue;}
     const file=item.src?.replace(/^\/commentnest\//,'');
     if(!file || !/^stickers\/[A-Za-z0-9_/-]+\.(png|gif|jpg|webp|avif)$/.test(file))throw new Error('Invalid sticker asset');
-    const bytes=await readFile(resolve(target,file));
-    const hashed=file.replace(/\.(\w+)$/,'.'+fingerprint(bytes)+'.$1');
-    await writeFile(resolve(target,hashed),bytes);item.src='/commentnest/'+hashed;
+    // Publish small transparent renditions; retain generated originals as build inputs.
+    const bytes=await sharp(await readFile(resolve(target,file))).resize(192,192,{fit:'contain',background:{r:0,g:0,b:0,alpha:0}}).webp({quality:85,alphaQuality:100,effort:6}).toBuffer();
+    const hashed=file.replace(/\.(\w+)$/,'.'+fingerprint(bytes)+'.webp');
+    await writeFile(resolve(target,hashed),bytes);hashedImages.set(item.src,'/commentnest/'+hashed);item.src='/commentnest/'+hashed;
   }
   const catalogText=JSON.stringify(catalog),catalogName='stickers/packs.'+fingerprint(catalogText)+'.json';
   await writeFile(resolve(target,catalogName),catalogText);
@@ -31,7 +35,7 @@ export async function copyWidgetAssets(destination) {
     await writeFile(resolve(target,'languages',name),source);localeFiles[file.slice(0,-5)]='languages/'+name;
   }
   const manifest={};
-  for(const file of ['locales.js','i18n.js','palette.js','markup.js','comments.js','widget.js','embed.js','widget.css']){
+  for(const file of ['locales.js','i18n.js','palette.js','markup.js','stickers.js','client.js','comments.js','widget.js','embed.js','widget.css']){
     let text=await readFile(resolve(target,file),'utf8');
     for(const [name,hashed] of Object.entries(manifest))text=text.replaceAll('./'+name,'./'+hashed);
     text=text.replaceAll('/commentnest/stickers/packs.json','/commentnest/'+catalogName);
@@ -40,7 +44,7 @@ export async function copyWidgetAssets(destination) {
   }
   await writeFile(resolve(target,'widget.js'),"export {mount} from './"+manifest['widget.js']+"';\n");
   await writeFile(resolve(target,'manifest.json'),JSON.stringify({...manifest,localeFiles}));
-  const immutable=[...Object.values(manifest),...Object.values(localeFiles),catalogName,...catalog.packs.flatMap(pack=>pack.items.map(item=>item.src.slice('/commentnest/'.length)))];
+  const immutable=[...new Set([...Object.values(manifest),...Object.values(localeFiles),catalogName,...catalog.packs.flatMap(pack=>pack.items.map(item=>item.src.slice('/commentnest/'.length)))])];
   await writeFile(resolve(destination,'_headers'), '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n/commentnest/*\n  Access-Control-Allow-Origin: *\n  Cross-Origin-Resource-Policy: cross-origin\n/commentnest/manifest.json\n  Cache-Control: public, max-age=300, must-revalidate\n/commentnest/widget.js\n  Cache-Control: public, max-age=60, must-revalidate\n' + immutable.map(file=>'/commentnest/'+file+'\n  Cache-Control: public, max-age=31536000, immutable\n').join(''));
   // Keep only the reachable module graph and catalog, including on repeated builds.
   // Unlink individual generated files; never recursively remove a supplied directory.

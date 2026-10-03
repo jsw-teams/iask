@@ -18,13 +18,24 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
  try {let cases=0;
  for(const locale of ['en','zh-CN','zh-SG','zh-TW'])for(const width of [360,820,1440])for(const mode of ['light','dark']) {
   const context=await browser.newContext({viewport:{width,height:900},colorScheme:mode});
-  let loggedIn=true,posted=null,failure=null,deleted=0,uploaded=0,apis=0,catalogs=0;
+  let loggedIn=true,posted=null,failure=null,deleted=0,uploaded=0,apis=0,catalogs=0,avatarFetches=0;
   const errors=[];
   await context.route('**/*',async route=>{
    const url=new URL(route.request().url()),method=route.request().method();
    const fulfill=data=>route.fulfill({json:data});
    if(url.origin===website)return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="'+locale+'" data-theme="'+mode+'"><style>body{margin:24px}header{padding-left:130px}form{margin-left:170px}iframe{max-width:100%}section{margin:0}</style><main><section id="comments" data-comments-thread="article" data-comments-title="Article"></section></main><script type="module">import{mount}from"'+backend+'/commentnest/widget.js";mount(document.getElementById("comments"),{backendUrl:"'+backend+'"});</script></html>'});
+   if(url.origin==='https://github.com')return route.fulfill({status:303,headers:{Location:backend+'/commentnest/auth-complete?channel='+url.searchParams.get('channel')},body:''});
    assert.equal(url.origin,backend);
+   if(url.pathname==='/api') {
+    assert.equal(url.search,'');
+    const headers=route.request().headers(),action=headers['x-service-action'];
+    const paths={comments:'/api/comments',session:'/api/comments/session',logout:'/api/comments/logout',login:'/api/comments/login',upload:'/api/comments/media/'};
+    if(action==='login')return fulfill({url:'https://github.com/login/oauth/authorize?channel='+headers['x-service-channel']});
+    if(action==='avatar'){avatarFetches++;url.pathname='/api/comments/avatar/'+decodeURIComponent(headers['x-service-resource']);}
+    else if(action==='media')url.pathname='/api/comments/media/'+decodeURIComponent(headers['x-service-resource']);
+    else url.pathname=paths[action];
+    if(action==='comments')assert.equal(decodeURIComponent(headers['x-service-thread']),'article');
+   }
    if(['/api/comments','/api/comments/session'].includes(url.pathname))apis++;
    if(url.pathname==='/api/comments/session') {const authorized=loggedIn || route.request().headers()['x-comments-session']===token;return fulfill({user:authorized?{id:17,login:'RealReader'}:null,csrf:authorized?'csrf':null});}
    if(url.pathname==='/api/comments/login') {
@@ -45,11 +56,11 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
    }
    if(url.pathname.startsWith('/api/comments/media/'))return route.fulfill({contentType:'image/png',body:pixel});
    if(url.pathname==='/api/comments') {
-    if(method==='DELETE'){if(failure)return route.fulfill({status:502,json:{error:'comments_backend_error'}});assert.deepEqual(route.request().postDataJSON(),{thread:'article',commentId:'123'});deleted++;return fulfill({ok:true});}
+    if(method==='DELETE'){if(failure)return route.fulfill({status:502,json:{error:'comments_backend_error'}});assert.deepEqual(route.request().postDataJSON(),{commentId:'123'});deleted++;return fulfill({ok:true});}
     if(method==='POST') {posted=route.request().postDataJSON();assert.equal(route.request().headers()['x-comments-csrf'],'csrf');assert.ok(!Object.hasOwn(posted,'name'));return fulfill({comment:{id:'123',author:'RealReader',authorId:17,body:posted.body,attachments:posted.attachments.map(item=>item.url),createdAt:'2026-10-03T12:00:00Z'}});}
     return fulfill({comments:[],closed:false});
    }
-   if(url.pathname==='/commentnest/embed') {
+   if(url.pathname==='/commentnest/embed' || url.pathname==='/frame' || url.pathname==='/auth') {
     const response=await handleServiceRequest(new Request(url),env);
     return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});
    }
@@ -68,6 +79,7 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
   await frame.locator('button[type=submit]').click();await frame.locator('.comment-item').waitFor();
   assert.equal(await frame.locator('.comment-body img').count(),0);assert.equal(await frame.locator('.comment-body').textContent(),'<img src=x onerror=alert(1)>');
   assert.equal(await frame.locator('.comment-item .comment-avatar img').count(),1);
+  assert.equal(avatarFetches,1,'Repeated identities share one avatar request within this frame');
   assert.ok(await frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   const layout=await frame.locator('.comment-form').evaluate(form=>({left:form.getBoundingClientRect().left,right:form.getBoundingClientRect().right,width:innerWidth}));assert.ok(layout.left<55 && layout.right<=layout.width,'Host stylesheet must not shift the widget');
@@ -76,10 +88,14 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
    const remove=frame.locator('[data-comments-delete]');await textarea.fill('Keep my draft');await remove.click();assert.equal(deleted,0);
    await frame.locator('.comment-actions button').last().click();await remove.click();failure=true;await remove.click();await frame.locator('[data-state=error]').waitFor();assert.equal(await frame.locator('.comment-item').count(),1);
    failure=false;await remove.click();await remove.click();await frame.locator('.comment-item').waitFor({state:'detached'});assert.equal(deleted,1);assert.equal(await textarea.inputValue(),'Keep my draft');
-   await frame.locator('[data-comments-stickers-toggle]').click();await frame.locator('.comment-sticker').first().waitFor();assert.equal(await frame.locator('.comment-sticker').count(),12);assert.equal(catalogs,1);
-   await frame.locator('[data-comments-sticker-packs] button').last().click();await frame.locator('.comment-sticker').first().click();await frame.locator('.comment-attachment-preview').waitFor();assert.equal(uploaded,1);
+   await frame.locator('[data-comments-stickers-toggle]').click();await frame.locator('.comment-sticker').first().waitFor();assert.equal(await frame.locator('.comment-sticker').count(),5);assert.equal(catalogs,1);
+   await textarea.fill('Before old After');await textarea.evaluate(node=>node.setSelectionRange(7,10));
+   await frame.locator('[data-comments-sticker-packs] button').last().click();await frame.locator('.comment-sticker').last().click();
+   assert.equal(await textarea.inputValue(),'Before :panda-perfect: After');assert.equal(uploaded,0);assert.equal(await frame.locator('.comment-attachment-preview').count(),0);
+   assert.equal(await textarea.evaluate(node=>sessionStorage.getItem('reporelay-draft:article')), 'Before :panda-perfect: After');
    await frame.locator('.comment-sticker').first().focus();await page.keyboard.press('Escape');assert.ok(await frame.locator('[data-comments-stickers]').isHidden());
-   await textarea.fill('');await frame.locator('button[type=submit]').click();await frame.locator('.comment-item').waitFor();assert.equal(posted.attachments.length,1);assert.equal(await frame.locator('.comment-attachment-image').count(),1);
+   await frame.locator('button[type=submit]').click();await frame.locator('.comment-body .comment-inline-sticker').waitFor();assert.equal(posted.body,'Before :panda-perfect: After');assert.ok(!Object.hasOwn(posted,'thread'));assert.ok(!Object.hasOwn(posted,'title'));assert.equal(posted.attachments.length,0);assert.equal(await frame.locator('.comment-body img').getAttribute('alt'),'Perfect score');
+   assert.equal(await frame.locator('.comment-eyebrow').count(),1);assert.ok(!(await frame.locator('.comment-footer').textContent()).includes('iask'));
    await textarea.fill('Survives refresh');await page.reload();await frame.locator('[data-comments-form]').waitFor({state:'visible'});assert.equal(await textarea.inputValue(),'Survives refresh');
    const heightBefore=await page.locator('iframe').getAttribute('style');
    await page.evaluate(()=>{document.querySelector('iframe').contentWindow.postMessage({type:'commentnest:login',channel:'fake',token:'forged'},'*');window.postMessage({type:'commentnest:resize',channel:'fake',height:99999},'*');});
