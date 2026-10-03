@@ -17,7 +17,7 @@ Each operator supplies their own exact website/service origins and GitHub App cr
 
 ## JS.GRIPE production
 
-The live introduction is https://js.gripe/iask/. The independent Cloudflare Worker is named `iask`, with the default address https://iask.openjs.workers.dev. Its configured service origin is https://iask.js.gripe. The operator will assign that route separately; APIs require that exact origin. The `web` Worker serves only the static website.
+The live introduction is https://js.gripe/iask/. The independent Cloudflare Worker is named `iask` and serves https://iask.js.gripe through the operator-managed route; APIs require that exact origin. Its workers.dev address is disabled. The `web` Worker serves only the static website. Article discussions are registered behind visitor consent; GitHub sign-in and posting still require the operator to complete App credentials and verify the callback.
 
 Run `npm run deploy:production` to build and deploy this site's iask instance. The GitHub Actions production workflow accepts an account Worker-edit Cloudflare API token stored in the repository's `CLOUDFLARE_API_TOKEN` secret. It deploys only iask and does not change website routes.
 
