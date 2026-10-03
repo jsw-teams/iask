@@ -1,5 +1,6 @@
 export const dictionaries={
   "en": {
+    "projectName": "iask",
     "privacySettings": "Privacy settings",
     "commentsTitle": "Comments",
     "commentsIntro": "",
@@ -34,6 +35,7 @@ export const dictionaries={
     "commentStickersError": "The sticker gallery is unavailable."
   },
   "zh-CN": {
+    "projectName": "我提问",
     "privacySettings": "隐私设置",
     "commentsTitle": "评论",
     "commentsIntro": "",
@@ -68,6 +70,7 @@ export const dictionaries={
     "commentStickersError": "表情包暂时无法加载。"
   },
   "zh-SG": {
+    "projectName": "我提问",
     "privacySettings": "隐私设置",
     "commentsTitle": "评论",
     "commentsIntro": "",
@@ -102,6 +105,7 @@ export const dictionaries={
     "commentStickersError": "表情包暂时无法加载。"
   },
   "zh-TW": {
+    "projectName": "我提问",
     "privacySettings": "隱私設定",
     "commentsTitle": "留言",
     "commentsIntro": "",

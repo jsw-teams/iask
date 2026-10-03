@@ -16,7 +16,7 @@ plugins:
       services:
         - id: github-comments
           provider: external-widget
-          name: iAsk · 我提问
+          name: iask
           purpose: 经访客选择后加载讨论并允许使用 GitHub 登录评论。
           dataCategories: GitHub 用户 ID、账号、头像、评论及附件，以及服务请求的网络信息。
           recipient: 网站运营者与 GitHub

@@ -1,5 +1,5 @@
 {
-  "name": "iAsk YOUR_SITE",
+  "name": "iask YOUR_SITE",
   "url": "https://comments.example.com",
   "redirect_url": "https://comments.example.com",
   "callback_urls": [

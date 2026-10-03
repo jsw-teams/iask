@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 const fingerprint=bytes=>createHash('sha256').update(bytes).digest('hex').slice(0,16);
-export async function copyWidgetAssets(destination, {preserveHeaders=false}={}) {
+export async function copyWidgetAssets(destination) {
   const target=resolve(destination,'commentnest');
   if(target===fileURLToPath(new URL('../static/commentnest/',import.meta.url)).replace(/[\\/]$/,''))throw new Error('Asset output must be separate from source files');
   await mkdir(target,{recursive:true});
@@ -41,8 +41,7 @@ export async function copyWidgetAssets(destination, {preserveHeaders=false}={}) 
   await writeFile(resolve(target,'widget.js'),"export {mount} from './"+manifest['widget.js']+"';\n");
   await writeFile(resolve(target,'manifest.json'),JSON.stringify({...manifest,localeFiles}));
   const immutable=[...Object.values(manifest),...Object.values(localeFiles),catalogName,...catalog.packs.flatMap(pack=>pack.items.map(item=>item.src.slice('/commentnest/'.length)))];
-  const existing=preserveHeaders ? await readFile(resolve(destination,'_headers'),'utf8') : '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n';
-  await writeFile(resolve(destination,'_headers'), existing.trimEnd()+'\n/commentnest/*\n  Access-Control-Allow-Origin: *\n  Cross-Origin-Resource-Policy: cross-origin\n/commentnest/manifest.json\n  Cache-Control: public, max-age=300, must-revalidate\n/commentnest/widget.js\n  Cache-Control: public, max-age=60, must-revalidate\n' + immutable.map(file=>'/commentnest/'+file+'\n  Cache-Control: public, max-age=31536000, immutable\n').join(''));
+  await writeFile(resolve(destination,'_headers'), '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n/commentnest/*\n  Access-Control-Allow-Origin: *\n  Cross-Origin-Resource-Policy: cross-origin\n/commentnest/manifest.json\n  Cache-Control: public, max-age=300, must-revalidate\n/commentnest/widget.js\n  Cache-Control: public, max-age=60, must-revalidate\n' + immutable.map(file=>'/commentnest/'+file+'\n  Cache-Control: public, max-age=31536000, immutable\n').join(''));
   // Keep only the reachable module graph and catalog, including on repeated builds.
   // Unlink individual generated files; never recursively remove a supplied directory.
   const reachable=new Set([...immutable,'manifest.json','widget.js']);

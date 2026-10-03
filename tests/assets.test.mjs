@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
+import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {copyWidgetAssets} from '../tools/assets.mjs';
@@ -28,19 +28,5 @@ test('built widget has a coherent fingerprinted dependency graph and immutable s
   const obsolete=join(root,'embed.0000000000000000.js');
   const {writeFile}=await import('node:fs/promises');await writeFile(obsolete,'old graph');
   await copyWidgetAssets(dir);await assert.rejects(readFile(obsolete),/ENOENT/,'Rebuilds prune stale fingerprinted modules');
- }finally{await rm(dir,{recursive:true});}
-});
-
-test('composed site retains its CSP and immutable frontend cache without duplicate global headers',async()=>{
- const dir=await mkdtemp(join(tmpdir(),'iask-site-assets-'));
- try {
-  const siteHeaders="/*\n  Content-Security-Policy: default-src 'self'\n  Referrer-Policy: strict-origin-when-cross-origin\n/site.0123456789abcdef.js\n  Cache-Control: public, max-age=31536000, immutable\n";
-  await writeFile(join(dir,'_headers'),siteHeaders);
-  await copyWidgetAssets(dir,{preserveHeaders:true});
-  const combined=await readFile(join(dir,'_headers'),'utf8');
-  assert.ok(combined.startsWith(siteHeaders));
-  assert.equal(combined.match(/^\/\*$/gm).length,1);
-  assert.equal(combined.match(/Referrer-Policy:/g).length,1);
-  assert.match(combined,/\/commentnest\/widget\.[a-f0-9]{16}\.js\n  Cache-Control: public, max-age=31536000, immutable/);
  }finally{await rm(dir,{recursive:true});}
 });

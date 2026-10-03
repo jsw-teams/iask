@@ -1,7 +1,7 @@
 {
   "name": "@jsw-teams/iask",
   "version": "202610.4.0",
-  "description": "iAsk · 我提问: self-hosted GitHub App comments, isolated widgets and consent-gated website integration.",
+  "description": "iask: self-hosted GitHub App comments, isolated widgets and consent-gated website integration.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -30,12 +30,11 @@
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "build": "node --check backend/cloudflare/worker.js && node --check api/service.js && node tools/cli.mjs assets dist",
+    "build": "node --check backend/cloudflare/worker.js && node --check api/service.js && node tools/build.mjs",
     "deploy": "npm run build && wrangler deploy",
     "deploy:cloudflare": "npm run build && wrangler deploy",
     "deploy:vercel": "npm run build && npx vercel deploy --prod",
-    "build:production": "node tools/build-site.mjs",
-    "deploy:production": "npm run build:production && wrangler deploy --config backend/cloudflare/wrangler.production.jsonc"
+    "deploy:production": "npm run build && wrangler deploy --config backend/cloudflare/wrangler.production.jsonc"
   },
   "bin": {
     "iask": "tools/cli.mjs"

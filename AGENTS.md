@@ -1,4 +1,4 @@
-# iAsk
+# iask
 
 - This project owns all comment UI, translations, adaptive theme/layout, accessibility, authentication, attachments, storage and APIs. Website projects use only generic consent-controlled service slots.
 - Keep Cloudflare and Vercel adapters under `backend/<platform>`. Share authorization, CSRF validation, signing and comment logic; platform adapters must fail closed when persistent storage or secrets are unavailable.
@@ -7,5 +7,5 @@
 - Support valid BCP 47 language tags with explicit regional fallback, complete dictionaries, RTL layout, keyboard navigation, contrast, reduced motion and forced colors. Describe translated coverage accurately.
 - Static hashed files bypass platform Functions and receive a one-year immutable cache. Sessions, embed HTML and sensitive API responses use `no-store`.
 - Never commit deployment secrets. Keep `.env.example` illustrative and services disabled or unconfigured until real addresses and credentials are supplied.
-- The public name and repository are iAsk · 我提问 and jsw-teams/iask. Preserve legacy COMMENTNEST_/REPORELAY_ bindings, /commentnest paths, cookie names, message types and signed storage markers: they are compatibility contracts, not public branding.
-- JS.GRIPE production is deployed with backend/cloudflare/wrangler.production.jsonc. It intentionally retains the existing Worker name web, Durable Object class, migration tag, repository scope and callback origin. Never reset or rename these identities as part of a branding change. The production build composes the static web checkout with iAsk assets; all server logic stays in iAsk.
+- The English official name is iask and the Chinese official name is 我提问. Display one name according to locale; never combine the names or insert a middle dot into project branding. The repository is jsw-teams/iask. Preserve legacy COMMENTNEST_/REPORELAY_ bindings, /commentnest paths, cookie names, message types and signed storage markers: they are compatibility contracts, not public branding.
+- JS.GRIPE uses the independent Worker named iask, configured in backend/cloudflare/wrangler.production.jsonc. Deploy only widget assets and service code here; the web Worker remains a static website. Never deploy iask into web or change its routes. The operator will assign the new route later. A service-origin change also requires updating the GitHub App callback and website backendUrl/moduleUrl; persisted project scopes do not migrate automatically. Preserve old storage and signatures unless an explicit data migration is requested.

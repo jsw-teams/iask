@@ -12,7 +12,7 @@ const COMMENT_BODY_MARKER = '<!-- reporelay-comment-body -->';
 const ISSUE_THREAD_MARKER = 'reporelay-thread';
 const COMMENT_LABELS = [
   { name: 'comments', color: '0e8a16', description: 'Article comment threads' },
-  { name: 'reporelay', color: '0969da', description: 'Managed through iAsk' }
+  { name: 'reporelay', color: '0969da', description: 'Managed through iask' }
 ];
 const mediaBranch = settings => 'reporelay-media-' + settings.namespace;
 const MAX_COMMENT_MEDIA_BYTES = 5_000_000;
@@ -108,7 +108,7 @@ async function storedCommentBody(session, body, attachments, env, thread) {
   const quotedBody = body.split(/\r?\n/).map((line) => '    ' + line).join('\n');
   const media = attachments.map((url, index) => '![' + escapeMarkdownInline('Attachment ' + (index + 1)) + '](' + url + ')').join('\n\n');
   return '<!-- ' + COMMENT_MARKER + ':' + metadata + ' -->\n\n' +
-    '> Comment by **' + escapeMarkdownInline(name) + '** via iAsk\n\n' +
+    '> Comment by **' + escapeMarkdownInline(name) + '** via iask\n\n' +
     COMMENT_BODY_MARKER + '\n' + quotedBody + (media ? '\n\n' + media : '');
 }
 
@@ -225,7 +225,7 @@ async function normalizeCommentIssue(settings, issue, thread, title, requestUrl)
     '',
     'Comment thread for [' + title + '](' + siteUrl + '/).',
     '',
-    'Managed by iAsk. Delete an individual Issue Comment to moderate one post; close or lock this Issue to close the article comment section.'
+    'Managed by iask. Delete an individual Issue Comment to moderate one post; close or lock this Issue to close the article comment section.'
   ].join('\n');
   return githubRequest(settings, issuePath(settings, issue.number), {
     method: 'PATCH',
@@ -251,7 +251,7 @@ async function createCommentIssue(settings, thread, title, requestUrl) {
         '',
         'Comment thread for **' + title.replace(/[\r\n]/g, ' ') + '** on ' + siteUrl + '.',
         '',
-        'This single Issue is the iAsk discussion thread for the article across its localized versions.',
+        'This single Issue is the iask discussion thread for the article across its localized versions.',
         'Delete an individual Issue Comment to remove one inappropriate post. Close or lock this Issue to close the article comment section.',
         'If this Issue is deleted, the next authenticated website comment will create a replacement thread.'
       ].join('\n')
@@ -349,7 +349,7 @@ async function handleCommentMedia(request, env) {
         headers: {
           Accept: 'application/vnd.github.raw+json',
           Authorization: 'Bearer ' + token,
-          'User-Agent': 'iAsk',
+          'User-Agent': 'iask',
           'X-GitHub-Api-Version': '2026-03-10'
         }
       });

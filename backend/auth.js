@@ -125,7 +125,7 @@ export async function handleCommentAuth(request, env) {
     const token = await exchange.json();
     if (!exchange.ok || token.error || typeof token.access_token !== 'string') throw new Error('Token exchange failed');
     const profile = await fetch('https://api.github.com/user', { redirect: 'manual', headers: {
-      Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + token.access_token, 'User-Agent': 'iAsk', 'X-GitHub-Api-Version': '2026-03-10' } });
+      Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + token.access_token, 'User-Agent': 'iask', 'X-GitHub-Api-Version': '2026-03-10' } });
     const user = await profile.json();
     if (!profile.ok || !Number.isSafeInteger(user.id) || user.id <= 0 || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(user.login)) throw new Error('Invalid GitHub identity');
     const session = await signValue({ id: user.id, login: user.login, csrf: random(), exp: Date.now() + 86400000 }, env, 'session');

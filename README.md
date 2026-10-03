@@ -1,4 +1,4 @@
-# iAsk · 我提问
+# iask
 
 Self-hosted comments owned entirely by this project: the editor, responsive layout, host color adaptation, language packs, accessibility, GitHub App sign-in, avatars, stickers, uploads and deletion. Websites contain static pages and consent-gated service slots.
 
@@ -7,15 +7,23 @@ Self-hosted comments owned entirely by this project: the editor, responsive layo
 
 Each operator supplies their own exact website/service origins and GitHub App credentials. Cloudflare uses Durable Objects; Vercel requires a persistent PostgreSQL database. Deployment buttons create a project and still require these operator settings.
 
-[Deployment and security](docs/deployment.md) · [EdgePress integration](docs/edgepress.md) · [Languages and accessibility](docs/languages.md) · [Storage lifecycle](docs/lifecycle.md)
+[Deployment and security](docs/deployment.md)
+
+[EdgePress integration](docs/edgepress.md)
+
+[Languages and accessibility](docs/languages.md)
+
+[Storage lifecycle](docs/lifecycle.md)
 
 ## JS.GRIPE production
 
-The live introduction is https://js.gripe/iask/. Production combines the static website from `jsw-teams/web` with this project's widget assets. No website-owned backend is introduced.
+The live introduction is https://js.gripe/iask/. The independent Cloudflare Worker is named `iask`, with the default address https://iask.openjs.workers.dev. Its configured service origin is https://iask.js.gripe. The operator will assign that route separately; APIs require that exact origin. The `web` Worker serves only the static website.
 
-With the website at `../web/js.gripe`, run `npm run deploy:production`. For another checkout path, run `npm run build:production -- --website-source <path>` and `npx wrangler deploy --config backend/cloudflare/wrangler.production.jsonc`. The GitHub Actions production workflow checks out both repositories and accepts a Cloudflare API token stored in the repository's `CLOUDFLARE_API_TOKEN` secret. Use an account Worker-edit token with zone-read and Worker-route-edit permissions for js.gripe.
+Run `npm run deploy:production` to build and deploy this site's iask instance. The GitHub Actions production workflow accepts an account Worker-edit Cloudflare API token stored in the repository's `CLOUDFLARE_API_TOKEN` secret. It deploys only iask and does not change website routes.
 
-The existing production Worker identity, GitHub App secrets, callback origin and Durable Object migration are retained to preserve discussions. Internal `/commentnest/` paths and configuration prefixes remain compatible. Other operators should use the standalone Cloudflare/Vercel deployment settings instead of this site's production profile.
+When assigning a new service domain, update `COMMENTNEST_SITE_ORIGIN`, the GitHub App callback (`<service-origin>/api/comments/callback`) and the website's `backendUrl`/`moduleUrl`. The App must allow the exact callback before GitHub sign-in works. Old storage is preserved separately; changing a service origin does not migrate signed comments automatically. Internal `/commentnest/` paths and configuration prefixes remain compatible. Other operators should use the standalone Cloudflare/Vercel deployment settings instead of this site's production profile.
+
+For this deployment, reuse App `5165740`, add its private key and client secret as `COMMENTNEST_GITHUB_APP_PRIVATE_KEY` and `COMMENTNEST_GITHUB_APP_CLIENT_SECRET` Secrets on Worker `iask`, and allow `https://iask.js.gripe/api/comments/callback` in the App settings. After the domain and login are verified, enable `plugins.consent.backend.enabled` in the website's `config.yml`. No private credentials belong in website files.
 
 ## Development
 
