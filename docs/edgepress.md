@@ -1,6 +1,6 @@
-# 边笺接入
+# 写文建站接入
 
-评论前端和后端全部由本项目负责。边笺与网站只保留静态页面、通用服务插槽和 consent。先独立部署本项目，再填写真实服务地址；网站不安装评论 npm 包，也不配置 GitHub App Secret。
+评论前端和后端全部由本项目负责。写文建站与网站只保留静态页面、通用服务插槽和 consent。先独立部署本项目，再填写真实服务地址；网站不安装评论 npm 包，也不配置 GitHub App Secret。
 
 在网站 config.yml 的 plugins.consent.services 注册服务：
 

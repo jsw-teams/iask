@@ -26,7 +26,7 @@ JS.GRIPE 的生产配置会自动提供网站来源、服务来源和仓库，�
 
 ## 在网站中接入
 
-按 [边笺接入指南](edgepress.md) 在 `config.yml` 的 `plugins.consent.services` 注册 `external-widget`：服务来源填写实际 HTTPS 地址，模块为该来源的 `/commentnest/widget.js`。逐项填写服务名、用途、数据、接收者、保留期限和隐私链接；启用后仍需访客同意。
+按 [写文建站接入指南](edgepress.md) 在 `config.yml` 的 `plugins.consent.services` 注册 `external-widget`：服务来源填写实际 HTTPS 地址，模块为该来源的 `/commentnest/widget.js`。逐项填写服务名、用途、数据、接收者、保留期限和隐私链接；启用后仍需访客同意。
 
 文章会获得已发布讨论上下文。需要评论的普通页面增加：
 
