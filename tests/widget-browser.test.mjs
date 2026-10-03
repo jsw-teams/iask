@@ -19,7 +19,8 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
  for(const locale of ['en','zh-CN','zh-SG','zh-TW'])for(const width of [360,820,1440])for(const mode of ['light','dark']) {
   const context=await browser.newContext({viewport:{width,height:900},colorScheme:mode});
   let loggedIn=true,posted=null,failure=null,deleted=0,uploaded=0,apis=0,catalogs=0,avatarFetches=0;
-  const errors=[];
+  const errors=[],requestFailures=[];
+  context.on('page',opened=>opened.on('requestfailed',request=>requestFailures.push({path:new URL(request.url()).pathname,error:request.failure()?.errorText})));
   await context.route('**/*',async route=>{
    const url=new URL(route.request().url()),method=route.request().method();
    const fulfill=data=>route.fulfill({json:data});
@@ -104,7 +105,7 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
   await frame.locator('[data-comments-logout]').click();await frame.locator('[data-comments-signin]').waitFor({state:'visible'});assert.ok(await frame.locator('[data-comments-form]').isHidden());
   if(locale==='en' && width===360 && mode==='light') {
    const popupEvent=page.waitForEvent('popup');await frame.locator('[data-comments-login]').click();const popup=await popupEvent;
-   await frame.locator('[data-comments-form]').waitFor({state:'visible'}).catch(error=>{throw new Error('Login popup failed: '+JSON.stringify({closed:popup.isClosed(),url:popup.url(),errors})+'; '+error.message);});
+   await frame.locator('[data-comments-form]').waitFor({state:'visible'}).catch(error=>{throw new Error('Login popup failed: '+JSON.stringify({closed:popup.isClosed(),url:popup.url(),errors,requestFailures})+'; '+error.message);});
    assert.equal(await frame.locator('body').evaluate(()=>sessionStorage.getItem('commentnest-session')),token);
    await page.reload();await frame.locator('[data-comments-form]').waitFor({state:'visible'});
    assert.equal(await frame.locator('[data-comments-identity]').textContent(),'@RealReader');
