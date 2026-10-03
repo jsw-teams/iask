@@ -12,10 +12,11 @@ const COMMENT_BODY_MARKER = '<!-- reporelay-comment-body -->';
 const ISSUE_THREAD_MARKER = 'reporelay-thread';
 const COMMENT_LABELS = [
   { name: 'comments', color: '0e8a16', description: 'Article comment threads' },
-  { name: 'reporelay', color: '0969da', description: 'Managed through CommentNest' }
+  { name: 'reporelay', color: '0969da', description: 'Managed through iAsk' }
 ];
 const mediaBranch = settings => 'reporelay-media-' + settings.namespace;
 const MAX_COMMENT_MEDIA_BYTES = 5_000_000;
+const attachmentLimit = env => Number.isSafeInteger(Number(env.REPORELAY_MAX_ATTACHMENT_BYTES)) ? Math.min(MAX_COMMENT_MEDIA_BYTES,Math.max(1,Number(env.REPORELAY_MAX_ATTACHMENT_BYTES))) : MAX_COMMENT_MEDIA_BYTES;
 const COMMENT_MEDIA_TYPES = new Map([
   ['image/png', 'png'], ['image/jpeg', 'jpg'], ['image/gif', 'gif'],
   ['image/webp', 'webp'], ['image/avif', 'avif']
@@ -107,7 +108,7 @@ async function storedCommentBody(session, body, attachments, env, thread) {
   const quotedBody = body.split(/\r?\n/).map((line) => '    ' + line).join('\n');
   const media = attachments.map((url, index) => '![' + escapeMarkdownInline('Attachment ' + (index + 1)) + '](' + url + ')').join('\n\n');
   return '<!-- ' + COMMENT_MARKER + ':' + metadata + ' -->\n\n' +
-    '> Comment by **' + escapeMarkdownInline(name) + '** via CommentNest\n\n' +
+    '> Comment by **' + escapeMarkdownInline(name) + '** via iAsk\n\n' +
     COMMENT_BODY_MARKER + '\n' + quotedBody + (media ? '\n\n' + media : '');
 }
 
@@ -224,7 +225,7 @@ async function normalizeCommentIssue(settings, issue, thread, title, requestUrl)
     '',
     'Comment thread for [' + title + '](' + siteUrl + '/).',
     '',
-    'Managed by CommentNest. Delete an individual Issue Comment to moderate one post; close or lock this Issue to close the article comment section.'
+    'Managed by iAsk. Delete an individual Issue Comment to moderate one post; close or lock this Issue to close the article comment section.'
   ].join('\n');
   return githubRequest(settings, issuePath(settings, issue.number), {
     method: 'PATCH',
@@ -250,7 +251,7 @@ async function createCommentIssue(settings, thread, title, requestUrl) {
         '',
         'Comment thread for **' + title.replace(/[\r\n]/g, ' ') + '** on ' + siteUrl + '.',
         '',
-        'This single Issue is the CommentNest discussion thread for the article across its localized versions.',
+        'This single Issue is the iAsk discussion thread for the article across its localized versions.',
         'Delete an individual Issue Comment to remove one inappropriate post. Close or lock this Issue to close the article comment section.',
         'If this Issue is deleted, the next authenticated website comment will create a replacement thread.'
       ].join('\n')
@@ -348,7 +349,7 @@ async function handleCommentMedia(request, env) {
         headers: {
           Accept: 'application/vnd.github.raw+json',
           Authorization: 'Bearer ' + token,
-          'User-Agent': 'CommentNest',
+          'User-Agent': 'iAsk',
           'X-GitHub-Api-Version': '2026-03-10'
         }
       });
@@ -356,7 +357,7 @@ async function handleCommentMedia(request, env) {
       const extension = relative.split('.').at(-1);
       const type = [...COMMENT_MEDIA_TYPES].find(([, ext]) => ext === extension)?.[0];
       if (!type) return json({ error: 'not_found' }, 404);
-      const bytes = response.body ? await readBoundedBody(response.body, MAX_COMMENT_MEDIA_BYTES) : null;
+      const bytes = response.body ? await readBoundedBody(response.body, attachmentLimit(env)) : null;
       if (!bytes || !validMediaBytes(type, bytes)) return json({ error: 'invalid_media' }, 502);
       try {await fileCache?.put(cacheRequest,new Response(bytes,{headers:{'Content-Type':type,'Cache-Control':'public, max-age=300','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"}}));}catch{}
       return new Response(bytes, { headers: {
@@ -382,8 +383,8 @@ async function handleCommentMedia(request, env) {
   const type = request.headers.get('content-type')?.split(';',1)[0].trim().toLowerCase() || '';
   if (!COMMENT_MEDIA_TYPES.has(type)) return json({ error: 'unsupported_media_type' }, 415);
   const declared = Number(request.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > MAX_COMMENT_MEDIA_BYTES) return json({ error: 'payload_too_large' }, 413);
-  const bytes = request.body ? await readBoundedBody(request.body, MAX_COMMENT_MEDIA_BYTES) : null;
+  if (Number.isFinite(declared) && declared > attachmentLimit(env)) return json({ error: 'payload_too_large' }, 413);
+  const bytes = request.body ? await readBoundedBody(request.body, attachmentLimit(env)) : null;
   if (!bytes || !validMediaBytes(type, bytes)) return json({ error: bytes ? 'invalid_media' : 'payload_too_large' }, bytes ? 400 : 413);
 
   try {
@@ -459,6 +460,8 @@ async function handleComments(request, env) {
     try {
       const published = await publishedThread(request, env, thread);
       if (published instanceof Response) return published;
+      const cached = await settings.storage?.get('public-read');
+      if (cached?.expires > Date.now()) return json(cached.data);
       let issue = await findCommentIssue(settings, thread);
       if (!issue) return json({ comments: [], closed: false });
       let comments;
@@ -472,7 +475,9 @@ async function handleComments(request, env) {
         await forgetDeletedIssue(settings, thread);
         return json({ comments: [], closed: false, threadReset: true });
       }
-      return json({ comments, closed: issue.state !== 'open' || issue.locked === true });
+      const data = { comments, closed: issue.state !== 'open' || issue.locked === true };
+      await settings.storage?.put('public-read', {expires:Date.now()+15_000,data});
+      return json(data);
     } catch (error) {
       console.error('Comment read failed:', error?.message || error);
       return commentFailure(error);
@@ -494,6 +499,7 @@ async function handleComments(request, env) {
 
   if (!payload || Array.isArray(payload) || typeof payload !== 'object') return json({ error: 'invalid_comment' }, 400);
   const thread = typeof payload.thread === 'string' ? payload.thread.trim() : '';
+  await settings.storage?.delete('public-read');
   if (request.method === 'DELETE') {
     if (!validThread(thread) || !/^[1-9]\d{0,15}$/.test(String(payload.commentId)) || !Number.isSafeInteger(Number(payload.commentId))) {
       return json({ error: 'invalid_comment' }, 400);
@@ -575,7 +581,7 @@ async function handleComments(request, env) {
 async function publishedThreads(request, env) {
   try {
     const website = env.COMMENTNEST_WEBSITE_ORIGIN || env.REPORELAY_SITE_ORIGIN;
-    const address = new URL('/edgepress/comment-threads.json', website);
+    const address = new URL('/edgepress/service-contexts.json', website);
     // A remote allowlist is fetched only from the operator's fixed HTTPS origin.
     // Never accept an arbitrary manifest URL supplied by a visitor.
     if (address.protocol !== 'https:') return json({error:'comments_unavailable'},503);

@@ -1,1 +1,1 @@
-export {default,CommentCoordinator} from '../../backend/worker.js';
+export {default,CommentCoordinator} from '../../backend/cloudflare/worker.js';

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,rm} from 'node:fs/promises';
+import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {copyWidgetAssets} from '../tools/assets.mjs';
@@ -11,7 +11,8 @@ test('built widget has a coherent fingerprinted dependency graph and immutable s
   await copyWidgetAssets(dir);
   const root=join(dir,'commentnest'),manifest=JSON.parse(await readFile(join(root,'manifest.json'),'utf8'));
   const embed=await readFile(join(root,manifest['embed.js']),'utf8');
-  for(const name of ['locales.js','markup.js','comments.js'])assert.ok(embed.includes(manifest[name]));
+  for(const name of ['i18n.js','markup.js','comments.js'])assert.ok(embed.includes(manifest[name]));
+  assert.ok((await readFile(join(root,manifest['i18n.js']),'utf8')).includes(manifest['locales.js']));
   const comments=await readFile(join(root,manifest['comments.js']),'utf8');
   const catalogPath=comments.match(/\/commentnest\/(stickers\/packs\.[a-f0-9]{16}\.json)/)[1];
   const catalog=JSON.parse(await readFile(join(root,catalogPath),'utf8'));
@@ -21,5 +22,25 @@ test('built widget has a coherent fingerprinted dependency graph and immutable s
   const html=await (await handleServiceRequest(new Request(env.COMMENTNEST_SITE_ORIGIN+'/commentnest/embed?'+params),env)).text();assert.ok(html.includes(manifest['embed.js']));assert.ok(html.includes(manifest['widget.css']));
   const response=await handleServiceRequest(new Request(env.COMMENTNEST_SITE_ORIGIN+catalog.packs[0].items[0].src),env);assert.equal(response.headers.get('cache-control'),'public, max-age=31536000, immutable');
   const entry=await handleServiceRequest(new Request(env.COMMENTNEST_SITE_ORIGIN+'/commentnest/widget.js'),env);assert.equal(entry.headers.get('cache-control'),'public, max-age=60, must-revalidate');
+  const headers=await readFile(join(dir,'_headers'),'utf8');
+  assert.doesNotMatch(headers,/\/commentnest\/\*\n(?:  [^\n]+\n)*  Cache-Control:/,'A broad rule must not append a second max-age to hashed files');
+  await assert.rejects(readFile(join(root,'embed.js')),/ENOENT/,'Unreachable source modules are omitted from deployed assets');
+  const obsolete=join(root,'embed.0000000000000000.js');
+  const {writeFile}=await import('node:fs/promises');await writeFile(obsolete,'old graph');
+  await copyWidgetAssets(dir);await assert.rejects(readFile(obsolete),/ENOENT/,'Rebuilds prune stale fingerprinted modules');
+ }finally{await rm(dir,{recursive:true});}
+});
+
+test('composed site retains its CSP and immutable frontend cache without duplicate global headers',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'iask-site-assets-'));
+ try {
+  const siteHeaders="/*\n  Content-Security-Policy: default-src 'self'\n  Referrer-Policy: strict-origin-when-cross-origin\n/site.0123456789abcdef.js\n  Cache-Control: public, max-age=31536000, immutable\n";
+  await writeFile(join(dir,'_headers'),siteHeaders);
+  await copyWidgetAssets(dir,{preserveHeaders:true});
+  const combined=await readFile(join(dir,'_headers'),'utf8');
+  assert.ok(combined.startsWith(siteHeaders));
+  assert.equal(combined.match(/^\/\*$/gm).length,1);
+  assert.equal(combined.match(/Referrer-Policy:/g).length,1);
+  assert.match(combined,/\/commentnest\/widget\.[a-f0-9]{16}\.js\n  Cache-Control: public, max-age=31536000, immutable/);
  }finally{await rm(dir,{recursive:true});}
 });

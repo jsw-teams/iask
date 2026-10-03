@@ -84,7 +84,7 @@ export function initializeComments(context) {
   }
 
   function countLabel(count) {
-    return messages.count.replace('{count}', String(count));
+    return messages.count.replace('{count}', new Intl.NumberFormat(context.locale || document.documentElement.lang).format(count));
   }
 
   function renderAttachments(urls, container) {
@@ -136,7 +136,7 @@ export function initializeComments(context) {
     if (!file || !['image/png','image/jpeg','image/gif','image/webp','image/avif'].includes(file.type)) {
       throw new Error('attachment_invalid');
     }
-    if (file.size > 5_000_000) throw new Error('attachment_too_large');
+    if (file.size > (context.maxAttachmentBytes || 5_000_000)) throw new Error('attachment_too_large');
     const response = await fetch('/api/comments/media/', {
       method: 'POST',
       credentials: 'same-origin',
@@ -185,7 +185,7 @@ export function initializeComments(context) {
     if (comment.createdAt) {
       time.dateTime = comment.createdAt;
       const date = new Date(comment.createdAt);
-      time.textContent = Number.isNaN(date.valueOf()) ? comment.createdAt : new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
+      time.textContent = Number.isNaN(date.valueOf()) ? comment.createdAt : new Intl.DateTimeFormat(context.locale || document.documentElement.lang || undefined, {
         dateStyle: 'medium',
         timeStyle: 'short'
       }).format(date);
@@ -303,7 +303,7 @@ export function initializeComments(context) {
         setStatus(messages.uploading);
         try {
           const response=await fetch(entry.src,{credentials:'same-origin',redirect:'error'});
-          if(!response.ok || Number(response.headers.get('content-length'))>5_000_000)throw new Error('attachment_invalid');
+          if(!response.ok || Number(response.headers.get('content-length'))>(context.maxAttachmentBytes || 5_000_000))throw new Error('attachment_invalid');
           const blob=await response.blob();
           const uploaded=await uploadAttachment(blob);uploadedAttachments.push(uploaded);renderPendingAttachments();
           setStatus(messages.attachmentHelp);

@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "commentnest",
-  "main": "backend/worker.js",
+  "name": "iask",
+  "main": "backend/cloudflare/worker.js",
   "compatibility_date": "2026-10-03",
   "vars": {
     "COMMENTNEST_SITE_ORIGIN": "https://comments.example.com",
@@ -13,7 +13,12 @@
   "assets": {
     "directory": "./dist",
     "binding": "COMMENTNEST_ASSETS",
-    "run_worker_first": true
+    "run_worker_first": [
+      "/api/comments",
+      "/api/comments/*",
+      "/commentnest/embed",
+      "/commentnest/auth-complete"
+    ]
   },
   "durable_objects": {
     "bindings": [

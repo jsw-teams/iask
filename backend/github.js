@@ -16,7 +16,7 @@ export async function repositoryInstallation(settings) {
   const pending = (async () => {
     const response = await fetch('https://api.github.com/repos/' + settings.owner + '/' + settings.repo + '/installation', {
       redirect: 'manual', headers: {Accept:'application/vnd.github+json', Authorization:'Bearer ' + await githubAppJwt(settings),
-        'User-Agent':'RepoRelay', 'X-GitHub-Api-Version':'2026-03-10'}
+        'User-Agent':'iAsk', 'X-GitHub-Api-Version':'2026-03-10'}
     });
     if (!response.ok) throw new GitHubCommentsError(response);
     const data = await response.json();
@@ -97,7 +97,7 @@ async function exchangeInstallationToken(settings) {
       Accept: 'application/vnd.github+json',
       Authorization: 'Bearer ' + jwt,
       'Content-Type': 'application/json',
-      'User-Agent': 'CommentNest',
+      'User-Agent': 'iAsk',
       'X-GitHub-Api-Version': '2026-03-10'
     },
     body: JSON.stringify({
@@ -131,7 +131,7 @@ export function repositorySettings(env) {
 // For trusted server-side code only. No arbitrary URL or repository is accepted.
 export function createRepositoryClient(env) {
   const settings = repositorySettings(commentEnvironment(env));
-  if (!settings) throw new Error('CommentNest GitHub App configuration is incomplete');
+  if (!settings) throw new Error('iAsk GitHub App configuration is incomplete');
   return {
     async readFile(path, ref = 'main') {
       if (typeof path !== 'string' || !path || path.startsWith('/') || path.length > 512 ||
@@ -152,7 +152,7 @@ export async function githubRequest(settings, path, init = {}) {
       Accept: 'application/vnd.github+json',
       Authorization: 'Bearer ' + token,
       'Content-Type': 'application/json',
-      'User-Agent': 'CommentNest',
+      'User-Agent': 'iAsk',
       'X-GitHub-Api-Version': '2026-03-10',
       ...(init.headers || {})
     }

@@ -1,11 +1,13 @@
-import {dictionaries} from './locales.js';
+import {loadDictionary,direction,canonicalLocale} from './i18n.js';
 import {renderWidget} from './markup.js';
 import {initializeComments} from './comments.js';
 const context=JSON.parse(document.getElementById('commentnest-context').textContent);
-const locale=Object.hasOwn(dictionaries,context.locale)?context.locale:context.locale.startsWith('zh')?(context.locale==='zh-HK'?'zh-TW':'zh-CN'):'en';
+const {locale,messages}=await loadDictionary(context.locale,context.localeFiles);
 document.documentElement.lang=locale;
+document.documentElement.dir=direction(context.locale);
+context.locale=canonicalLocale(context.locale);
 const root=document.getElementById('commentnest');
-root.innerHTML=renderWidget(context,{...dictionaries.en,...dictionaries[locale]});
+root.innerHTML=renderWidget(context,messages);
 initializeComments(context);
 const post=payload=>parent.postMessage({...payload,channel:context.channel},context.parent);
 root.querySelector('[data-comments-privacy]')?.addEventListener('click',()=>post({type:'commentnest:privacy'}));
@@ -25,5 +27,10 @@ window.addEventListener('message',event=>{
   if(event.source!==parent || event.origin!==context.parent || event.data?.channel!==context.channel || event.data.type!=='commentnest:theme')return;
   const theme=event.data.theme;
   document.documentElement.dataset.theme=['light','dark'].includes(theme)?theme:'auto';
+  const palette=event.data.palette;
+  if (palette && typeof palette === 'object') for(const [key,value] of Object.entries(palette)) {
+    if (['canvas','surface','ink','muted','line','accent','accent-soft','focus','danger'].includes(key) && typeof value === 'string' && /^(?:#[\da-f]{3,8}|rgba?\([\d.,%\s/]+\))$/i.test(value)) document.documentElement.style.setProperty('--'+key,value);
+  }
 });
+post({type:'commentnest:ready',title:messages.commentsTitle});
 resize();

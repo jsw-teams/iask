@@ -2,6 +2,7 @@ import {handleCommentRequest} from './comments.js';
 import {commentEnvironment} from './environment.js';
 import {signingEnvironment} from './keys.js';
 import {commentSession,sessionToken} from './auth.js';
+import {canonicalLocale,direction} from '../static/commentnest/i18n.js';
 
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = value => JSON.stringify(value).replace(/</g,'\\u003c');
@@ -24,7 +25,7 @@ export async function handleServiceRequest(request, suppliedEnv) {
     const session=await commentSession(request,signedEnv);
     const token=session ? sessionToken(request) : null;
     const script=`if(window.opener){window.opener.postMessage(${json({type:'commentnest:login',channel,token})},location.origin);window.close();}`;
-    return html('<!doctype html><meta charset="utf-8"><title>CommentNest</title><p>You can close this window.</p><script nonce="'+nonce+'">'+script+'</script>',"default-src 'none'; script-src 'nonce-"+nonce+"'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",request);
+    return html('<!doctype html><meta charset="utf-8"><title>iAsk</title><p>You can close this window.</p><script nonce="'+nonce+'">'+script+'</script>',"default-src 'none'; script-src 'nonce-"+nonce+"'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",request);
   }
   if(url.pathname==='/commentnest/embed') {
     const parent=origin(url.searchParams.get('parent'));
@@ -32,14 +33,14 @@ export async function handleServiceRequest(request, suppliedEnv) {
     const thread=url.searchParams.get('thread');
     if(parent!==website || !/^[a-f0-9]{32}$/.test(channel || '') || !thread || thread.length>240 || /[\x00-\x1f\x7f]/.test(thread))
       return new Response('Invalid widget context',{status:400});
-    const language=url.searchParams.get('locale') || 'en';
-    const locale=/^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?$/.test(language)?language:'en';
+    const locale=canonicalLocale(url.searchParams.get('locale'));
     const theme=['light','dark'].includes(url.searchParams.get('theme'))?url.searchParams.get('theme'):'auto';
-    const context={thread,title:(url.searchParams.get('title') || '').slice(0,500),parent,channel,locale,theme};
+    const context={thread,title:(url.searchParams.get('title') || '').slice(0,500),parent,channel,locale,theme,maxAttachmentBytes:env.REPORELAY_MAX_ATTACHMENT_BYTES || 5_000_000};
     let manifest={};
     try {const response=await (env.COMMENTNEST_ASSETS||env.ASSETS)?.fetch(new Request(new URL('/commentnest/manifest.json',url)));if(response?.ok)manifest=await response.json();}catch{}
+    context.localeFiles=manifest.localeFiles || {};
     const asset=name=>/^[a-z]+\.[a-f0-9]{16}\.(js|css)$/.test(manifest[name]||'')?manifest[name]:name;
-    const body='<!doctype html><html lang="'+escape(locale)+'" data-theme="'+theme+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CommentNest · 评巢</title><link rel="stylesheet" href="/commentnest/'+asset('widget.css')+'"></head><body><main id="commentnest"><p role="status">Loading…</p></main><script nonce="'+nonce+'" type="application/json" id="commentnest-context">'+json(context)+'</script><script type="module" src="/commentnest/'+asset('embed.js')+'"></script></body></html>';
+    const body='<!doctype html><html lang="'+escape(locale)+'" dir="'+direction(locale)+'" data-theme="'+theme+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>iAsk · 我提问</title><link rel="stylesheet" href="/commentnest/'+asset('widget.css')+'"></head><body><main id="commentnest"></main><script nonce="'+nonce+'" type="application/json" id="commentnest-context">'+json(context)+'</script><script type="module" src="/commentnest/'+asset('embed.js')+'"></script></body></html>';
     return html(body,"default-src 'none'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors "+website+"; base-uri 'none'; form-action 'self'",request);
   }
   const assets=env.COMMENTNEST_ASSETS || env.ASSETS;

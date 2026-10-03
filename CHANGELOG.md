@@ -1,4 +1,4 @@
-# CommentNest · 评巢 — Changelog
+# iAsk · 我提问 — Changelog
 
 ## 202610.4 — 2026-10-03
 
@@ -8,7 +8,7 @@
 
 - Stop serving attachments when their published comment or Issue is removed; validate the current Issue and signed reference, disable image response caching, and preview new uploads locally.
 
-- Rename the project CommentNest · 评巢 and move the complete comment widget, CSS, translations and licensed sticker gallery into this service.
+- Rename the project iAsk · 我提问 and move the complete comment widget, CSS, translations and licensed sticker gallery into this service.
 - Reduce EdgePress integration to the configured backend URL, page context and explicit opt-in loading.
 - Isolate comment layout in a responsive iframe, with automatic height, light/dark mode, improved composer, avatars and mobile spacing.
 - Support independent cross-origin deployment and a first-party GitHub login popup; transfer only a signed service session to its same-origin iframe.

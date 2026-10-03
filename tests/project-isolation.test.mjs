@@ -167,6 +167,35 @@ test('media reuses cached bytes only after fresh validation, and deletion blocks
   });}finally{globalThis.caches=savedCache;}
 });
 
+test('public read cache reduces upstream calls, rechecks publication and expires before fresh moderation',async()=>{
+  await fixture(async({post,get,values,calls,issue,env})=>{
+    assert.equal((await post()).status,201);
+    assert.equal((await get()).status,200);
+    const previous=calls.length;
+    issue.locked=true;
+    const cached=await get();
+    assert.equal(cached.headers.get('cache-control'),'no-store');
+    assert.equal((await cached.json()).closed,false);
+    assert.equal(calls.length,previous);
+    assert.equal((await post()).status,409,'Cached open state must not authorize a new comment');
+    assert.equal(values.has('public-read'),false);
+    assert.equal((await(await get()).json()).closed,true);
+    values.get('public-read').expires=Date.now()-1;
+    issue.locked=false;
+    assert.equal((await(await get()).json()).closed,false);
+    env.ASSETS.fetch=async()=>Response.json([]);
+    assert.equal((await get()).status,404,'A cached list must not expose an unpublished article');
+  });
+});
+
+test('Vercel upload capability rejects bodies over 4 MB before contacting storage',async()=>{
+  await fixture(async({env,upload,calls})=>{
+    env.REPORELAY_MAX_ATTACHMENT_BYTES=4_000_000;
+    assert.equal((await upload(png,{'content-length':'4000001'})).status,413);
+    assert.equal(calls.length,0);
+  });
+});
+
 test('an absent coordinator fails explicitly and methods are restricted',async()=>{
   await fixture(async({env,get})=>{
     env.REPORELAY_THREADS=undefined;

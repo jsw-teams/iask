@@ -1,0 +1,26 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "web",
+  "main": "worker.js",
+  "account_id": "b425871b9261921b21e80757e6f94d92",
+  "compatibility_date": "2026-10-03",
+  "workers_dev": false,
+  "preview_urls": false,
+  "keep_vars": true,
+  "vars": {
+    "REPORELAY_REPOSITORY": "jsw-teams/web",
+    "REPORELAY_SITE_ORIGIN": "https://js.gripe",
+    "COMMENTNEST_WEBSITE_ORIGIN": "https://js.gripe"
+  },
+  "assets": {
+    "directory": "../../dist",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": ["/api/comments", "/api/comments/*", "/commentnest/embed", "/commentnest/auth-complete"]
+  },
+  "durable_objects": {
+    "bindings": [{"name": "REPORELAY_THREADS", "class_name": "CommentCoordinator"}]
+  },
+  "migrations": [{"tag": "reporelay-threads", "new_sqlite_classes": ["CommentCoordinator"]}],
+  "routes": [{"pattern": "js.gripe/*", "zone_name": "js.gripe"}]
+}

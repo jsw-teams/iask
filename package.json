@@ -1,7 +1,7 @@
 {
-  "name": "@jsw-teams/commentnest",
+  "name": "@jsw-teams/iask",
   "version": "202610.4.0",
-  "description": "CommentNest · 评巢: self-hosted GitHub App comments, isolated widgets and consent-gated website integration.",
+  "description": "iAsk · 我提问: self-hosted GitHub App comments, isolated widgets and consent-gated website integration.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -20,19 +20,25 @@
     "CHANGELOG.md",
     "tools",
     "wrangler.jsonc",
-    ".dev.vars.example"
+    ".dev.vars.example",
+    "api",
+    "vercel.json"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/jsw-teams/CommentNest.git"
+    "url": "https://github.com/jsw-teams/iask.git"
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "build": "node --check backend/worker.js && node tools/cli.mjs assets dist",
-    "deploy": "wrangler deploy"
+    "build": "node --check backend/cloudflare/worker.js && node --check api/service.js && node tools/cli.mjs assets dist",
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:cloudflare": "npm run build && wrangler deploy",
+    "deploy:vercel": "npm run build && npx vercel deploy --prod",
+    "build:production": "node tools/build-site.mjs",
+    "deploy:production": "npm run build:production && wrangler deploy --config backend/cloudflare/wrangler.production.jsonc"
   },
   "bin": {
-    "commentnest": "tools/cli.mjs"
+    "iask": "tools/cli.mjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0",
@@ -62,5 +68,8 @@
         "description": "Client secret generated in your GitHub App settings."
       }
     }
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
   }
 }
