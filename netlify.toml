@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["pg", "@netlify/database"]
+  included_files = ["dist/commentnest/**"]
+
+[template.environment]
+  COMMENTNEST_SITE_ORIGIN = "Exact HTTPS origin of this service"
+  COMMENTNEST_WEBSITE_ORIGIN = "Exact HTTPS origin of the embedding website"
+  COMMENTNEST_REPOSITORY = "GitHub owner/repository with Issues enabled"
+  COMMENTNEST_GITHUB_APP_ID = "GitHub App numeric ID"
+  COMMENTNEST_GITHUB_APP_CLIENT_ID = "GitHub App client ID"
+  COMMENTNEST_GITHUB_APP_CLIENT_SECRET = "GitHub App client secret"
+  COMMENTNEST_GITHUB_APP_PRIVATE_KEY = "Complete GitHub App PEM private key"

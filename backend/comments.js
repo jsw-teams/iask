@@ -1,4 +1,5 @@
 import {requestThread} from './transport.js';
+import {configuredWebsites} from './websites.js';
 import { dataScope } from './scope.js';
 import { commentEnvironment } from './environment.js';
 import { signingEnvironment, storedSigningKeys } from './keys.js';
@@ -579,10 +580,11 @@ async function handleComments(request, env) {
 }
 
 
-async function publishedThreads(request, env) {
+async function publishedThreads(request, env, selectedThread, selectedWebsite) {
   try {
-    const website = env.COMMENTNEST_WEBSITE_ORIGIN || env.REPORELAY_SITE_ORIGIN;
-    const address = new URL('/edgepress/service-contexts.json', website);
+    const websites=configuredWebsites(env);
+    const website=selectedWebsite || websites.find(site=>site.prefix && selectedThread?.startsWith(site.prefix)) || websites[0];
+    const address = new URL('/edgepress/service-contexts.json', website.origin);
     // A remote allowlist is fetched only from the operator's fixed HTTPS origin.
     // Never accept an arbitrary manifest URL supplied by a visitor.
     if (address.protocol !== 'https:') return json({error:'comments_unavailable'},503);
@@ -594,18 +596,22 @@ async function publishedThreads(request, env) {
     if (!bytes) return json({error:'comments_unavailable'},503);
     const manifest = JSON.parse(new TextDecoder().decode(bytes));
     if (!Array.isArray(manifest)) return json({ error: 'comments_unavailable' }, 503);
-    return manifest.filter(item=>validThread(item?.thread) && typeof item.title==='string' && item.title.length<=500);
+    return manifest.filter(item=>validThread(item?.thread) && typeof item.title==='string' && item.title.length<=500).map(item=>({...item,thread:website.prefix+item.thread})).filter(item=>validThread(item.thread));
   } catch { return json({ error: 'comments_unavailable' }, 503); }
 }
 
 async function publishedThread(request,env,thread) {
-  const manifest=await publishedThreads(request,env);
+  const manifest=await publishedThreads(request,env,thread);
   return manifest instanceof Response?manifest:manifest.find(item=>item.thread===thread) || json({error:'unknown_thread'},404);
 }
 async function mediaThread(request,env,hash) {
-  const manifest=await publishedThreads(request,env);
-  if(manifest instanceof Response)return manifest;
-  for(const entry of manifest)if(await threadHash(entry.thread)===hash)return entry.thread;
+  let unavailable;
+  for(const website of configuredWebsites(env)) {
+    const manifest=await publishedThreads(request,env,null,website);
+    if(manifest instanceof Response){unavailable=manifest;continue;}
+    for(const entry of manifest)if(await threadHash(entry.thread)===hash)return entry.thread;
+  }
+  if(unavailable)return unavailable;
   return json({error:'not_found'},404);
 }
 // A single object per repository/namespace/article serializes GitHub operations.

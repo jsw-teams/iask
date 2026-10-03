@@ -1,7 +1,7 @@
 # iask
 
 - This project owns all comment UI, translations, adaptive theme/layout, accessibility, authentication, attachments, storage and APIs. Website projects use only generic consent-controlled service slots.
-- Keep Cloudflare and Vercel adapters under `backend/<platform>`. Share authorization, CSRF validation, signing and comment logic; platform adapters must fail closed when persistent storage or secrets are unavailable.
+- Keep Cloudflare, Vercel and Netlify adapters under `backend/<platform>`. Share authorization, CSRF validation, signing and comment logic; platform adapters must fail closed when persistent storage or secrets are unavailable.
 - Vercel uses PostgreSQL with verified TLS and a direct connection or session-mode pooler. Session advisory locks protect an entire operation. Do not substitute in-memory persistence, transaction-mode pooling or expiring write leases.
 - Preserve uncertain-creation markers and stable signing keys across processes. Check authorization and current thread state before mutations and attachment reads; cached public list snapshots may never replace those checks.
 - Support valid BCP 47 language tags with explicit regional fallback, complete dictionaries, RTL layout, keyboard navigation, contrast, reduced motion and forced colors. Describe translated coverage accurately.
@@ -13,3 +13,6 @@
 - Keep explicit static routing and a static 404 for unrelated paths. Check routing with the platform emulator before changing exclusions; negative patterns override positive patterns. Reject unknown API paths before accessing signing storage or GitHub.
 
 - Business requests use /api and validated X-Service-Action/Thread/Resource headers; reject URL query parameters. The fixed /frame receives context only from the configured parent origin. Initialize OAuth in the first-party /auth popup so third-party cookie blocking cannot break state cookies; preserve the exact registered callback and old signed attachment contracts.
+
+- Netlify uses its auto-provisioned Database and committed SQL migrations. Reuse the PostgreSQL adapter with verified TLS and session locks. Use the documented Neon direct endpoint rather than transaction pooling. Do not run hosted DDL at request time. Database credits share the platform budget; do not describe Free as an always-on database allowance.
+- Additional embedding websites require exact HTTPS origins and distinct thread prefixes. Keep existing primary thread identifiers, scopes and signing keys unchanged. Homepage pages do not contain discussion slots.

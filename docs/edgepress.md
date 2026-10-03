@@ -1,6 +1,6 @@
-# EdgePress 接入
+# 边笺接入
 
-评论前端和后端全部由本项目负责。EdgePress 与网站只保留静态页面、通用服务插槽和 consent。先独立部署本项目，再填写真实服务地址；网站不安装评论 npm 包，也不配置 GitHub App Secret。
+评论前端和后端全部由本项目负责。边笺与网站只保留静态页面、通用服务插槽和 consent。先独立部署本项目，再填写真实服务地址；网站不安装评论 npm 包，也不配置 GitHub App Secret。
 
 在网站 config.yml 的 plugins.consent.services 注册服务：
 
@@ -14,7 +14,7 @@ plugins:
     services:
       - id: github-comments
         provider: external-widget
-        name: iask
+        name: 我提问
         purpose: 经访客选择后加载讨论并允许使用 GitHub 登录评论。
         dataCategories: GitHub 用户 ID、账号、头像、评论及附件，以及服务请求的网络信息。
         recipient: 网站运营者与 GitHub
@@ -23,6 +23,7 @@ plugins:
         backendUrl: https://comments.example.com
         moduleUrl: https://comments.example.com/commentnest/widget.js
         placement: posts
+        enabled: true
 ```
 
 替换 example 地址，填写真实 `privacy.controller` 及 `privacy.policyUrl`。多语言网站可将服务说明写成覆盖所有已启用语言的映射。`placement: posts` 给文章添加插槽；页面在 front matter 中显式添加：
@@ -40,3 +41,5 @@ blocks:
 其他建站工具也应在明确 consent 后从服务导入 `/commentnest/widget.js`，调用 `mount(root,{backendUrl,thread,title})`，并在构建时发布同格式 allowlist。不要无条件加载 iframe、脚本、preconnect 或 GitHub 请求。变更服务地址或模块地址会使网站已保存的 consent 失效，需要访客重新选择。
 
 服务的 OAuth 回调始终登记在评论服务来源，例如 `https://comments.example.com/api/comments/callback`。网站静态部署平台与评论服务平台可以不同。
+
+首页不放服务插槽。即使访客已经同意服务，首页也不会加载评论。附加网站使用 COMMENTNEST_ADDITIONAL_WEBSITES 的精确 HTTPS 来源与独立线程前缀，详见 [中文说明](zh-CN.md)。

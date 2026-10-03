@@ -1,0 +1,16 @@
+[
+  {
+    "file": "iask-en.webp",
+    "kind": "actual built widget, explicitly mocked anonymous comment data and demo signed-in identity; no GitHub writes",
+    "source": "iask/dist/commentnest",
+    "locale": "en",
+    "date": "2026-10-04"
+  },
+  {
+    "file": "iask-zh.webp",
+    "kind": "actual built widget, explicitly mocked anonymous comment data and demo signed-in identity; no GitHub writes",
+    "source": "iask/dist/commentnest",
+    "locale": "zh-CN",
+    "date": "2026-10-04"
+  }
+]

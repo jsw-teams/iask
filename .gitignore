@@ -11,3 +11,5 @@ dist/
 *.pem
 *.key
 *.tgz
+
+.netlify/

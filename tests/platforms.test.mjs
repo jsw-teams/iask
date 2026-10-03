@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import {readFile,mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {createPostgresNamespace} from '../backend/vercel/storage.js';
+import {createPostgresNamespace} from '../backend/postgres.js';
 import {createVercelHandler} from '../backend/vercel/handler.js';
-import {fileAssets} from '../backend/vercel/assets.js';
+import {createNetlifyHandler,directConnection} from '../backend/netlify/handler.js';
+import {config as netlifyRoutes} from '../netlify/functions/service.mjs';
+import {fileAssets} from '../backend/assets.js';
 import {CommentCoordinator} from '../backend/comments.js';
 import {loadDictionary,canonicalLocale,localeCandidates,direction} from '../static/commentnest/i18n.js';
 import {contrast} from '../static/commentnest/palette.js';
@@ -70,4 +72,22 @@ test('Vercel serves hashed assets statically and routes only dynamic service ent
   const worker=JSON.parse(await readFile(new URL('../wrangler.jsonc',import.meta.url),'utf8'));
   assert.ok(Array.isArray(worker.assets.run_worker_first));
   assert.ok(!worker.assets.run_worker_first.includes('/commentnest/*'));
+});
+
+test('Netlify shares persistent session locks, relies on migrations and rejects unavailable storage',async()=>{
+  assert.equal(new URL(directConnection('postgres://reader:example@ep-demo-pooler.us-east-2.aws.neon.tech/db')).hostname,'ep-demo.us-east-2.aws.neon.tech');
+  assert.throws(()=>directConnection('postgres://reader:example@pooler.unverified.example/db'),/direct/);
+  assert.throws(()=>directConnection('https://database.example/db'),/protocol/);
+  const unavailable=await createNetlifyHandler({}, {getConnectionString(){throw new Error('No provisioned database');}})(new Request('https://comments.example/api'));
+  assert.equal(unavailable.status,503);assert.equal(unavailable.headers.get('cache-control'),'no-store');
+  const calls=[],values=new Map();
+  const client={async query(sql,args){calls.push(sql);if(sql.startsWith('SELECT value'))return {rows:values.has(args[1])?[{value:values.get(args[1])}]:[]};if(sql.startsWith('INSERT'))values.set(args[1],JSON.parse(args[2]));return {rows:[]};},release(){calls.push('release');}};
+  const namespace=createPostgresNamespace(null,{initializeSchema:false,pool:{query(){throw new Error('Request-time schema initialization is forbidden');},connect:async()=>client,end:async()=>{}}});
+  namespace.bindEnvironment({});
+  const read=()=>namespace.get('signing:netlify').fetch(new Request('https://internal/__reporelay/keys'));
+  const first=await (await read()).json(),second=await (await read()).json();assert.equal(first.session,second.session);
+  assert.equal(calls.filter(sql=>sql.includes('pg_advisory_lock(')).length,2);
+  assert.equal(calls.filter(sql=>sql.includes('pg_advisory_unlock(')).length,2);
+  assert.ok(netlifyRoutes.path.includes('/api'));assert.ok(netlifyRoutes.path.includes('/frame'));
+  assert.ok(!netlifyRoutes.path.some(path=>path==='/*'||path==='/commentnest/*'||path.startsWith('/.netlify/')));
 });

@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {chromium} from 'playwright';
 import {copyWidgetAssets} from '../tools/assets.mjs';
-import {fileAssets} from '../backend/vercel/assets.js';
+import {fileAssets} from '../backend/assets.js';
 import {handleServiceRequest} from '../backend/service.js';
 import {dictionaries} from '../static/commentnest/locales.js';
 import {contrast} from '../static/commentnest/palette.js';

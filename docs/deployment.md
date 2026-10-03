@@ -1,6 +1,6 @@
 # Independent comment service deployment
 
-Cloudflare uses `backend/cloudflare/worker.js`; Vercel uses `api/service.js`, which calls `backend/vercel/handler.js`. Shared authorization and comment logic stays under `backend/`. Each instance serves one exact website origin.
+Cloudflare uses `backend/cloudflare/worker.js`; Netlify uses `netlify/functions/service.mjs`, calling `backend/netlify/handler.js`; Vercel uses `api/service.js`, calling `backend/vercel/handler.js`. Shared authorization and comment logic stays under `backend/`. Exact website origins are explicitly configured. [Compare free allowances](platforms.md) before choosing a platform; Cloudflare is recommended first.
 
 ## Cloudflare
 
@@ -10,9 +10,17 @@ For JS.GRIPE, use `npm run deploy:production`: its production profile sets the w
 
 The service root and unrelated paths return a static 404. An explicit `run_worker_first` route list sends only comment endpoints and embed/auth pages to service code, while `404-page` handles asset misses. Routing regression tests check both navigation and non-navigation probes without invoking a function. Legitimate API calls still invoke the Worker; requests matching an API route are rejected early when invalid. See [Cloudflare static routing](https://developers.cloudflare.com/workers/static-assets/binding/) and [static asset billing](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/).
 
-## Vercel
+## Netlify
 
-Use the README deployment button, attach a PostgreSQL database through your own Vercel Marketplace integration, and set these project environment variables:
+Use the README Netlify button and fill the GitHub App and exact-origin settings prompted by `netlify.toml`. The `@netlify/database` dependency triggers native Database provisioning; committed files under `netlify/database/migrations/` apply the schema on deployment. Do not supply an external database account or a manual `COMMENTNEST_DATABASE_URL`. The adapter reads the branch-aware connection from the platform SDK, uses verified TLS, and selects the documented direct Neon endpoint rather than a transaction-mode pooler so session advisory locks span the entire operation. Runtime requests never create or alter the hosted schema.
+
+Local deployment is `npm run deploy:netlify` after linking the Netlify project. Only explicitly configured `/api`, `/frame`, `/auth` and compatibility callback/resource paths invoke the Function; assets, the root and unrelated probes remain static. Netlify and Vercel share the persistent PostgreSQL adapter and cap uploads at 4 MB. Sessions and sensitive responses remain `no-store`.
+
+The current Free plan's 300 credits are shared by deployment, functions, database compute and bandwidth. Keep database sleep enabled and verify current billing in the dashboard. This repository has adapter and build checks; a real Netlify database deployment still needs account-level validation. [Native Database setup](https://docs.netlify.com/build/data-and-storage/netlify-database/getting-started/), [migrations](https://docs.netlify.com/build/data-and-storage/netlify-database/migrations/), [function configuration](https://docs.netlify.com/build/functions/configuration/).
+
+## Vercel with an existing database
+
+Import the repository into Vercel, attach a PostgreSQL database through your own integration, and set these project environment variables. This adapter is retained for existing database operators; it is not the recommended one-click path:
 
 | Variable | Value |
 | --- | --- |
@@ -48,7 +56,7 @@ Changing the service origin, repository or storage is a data migration. Existing
 | Public comment read snapshot | Internal 15-second cache; invalidate before writes |
 | Attachment bytes | Up to five minutes internally; every read verifies current ownership/references |
 
-Static widget files bypass Cloudflare Worker execution and Vercel Functions. There is no background polling. External moderation may take up to 15 seconds to appear in the public comment list; writes and attachment access still perform fresh checks. Platform outages do not produce cached success responses.
+Static widget files bypass Cloudflare Worker execution and platform Functions. There is no background polling. External moderation may take up to 15 seconds to appear in the public comment list; writes and attachment access still perform fresh checks. Platform outages do not produce cached success responses.
 
 Cloudflare accepts up to four images of 5 MB each. Vercel caps each upload at 4 MB to remain below its [4.5 MB function payload limit](https://vercel.com/docs/functions/limitations). The widget receives the platform capability and displays its actual limit. Existing larger attachments require a separate storage migration when moving to Vercel.
 

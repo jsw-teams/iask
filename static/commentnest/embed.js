@@ -42,7 +42,8 @@ else {
   let started=false;
   window.addEventListener('message',event=>{
     const data=event.data;
-    if(started || event.source!==parent || event.origin!==initial.parent || data?.type!=='commentnest:init' || !/^[a-f0-9]{32}$/.test(data.channel || '') || typeof data.thread!=='string' || !data.thread || data.thread.length>240 || /[\x00-\x1f\x7f]/.test(data.thread) || typeof data.title!=='string' || data.title.length>500)return;
-    started=true;void start({...initial,thread:data.thread,title:data.title,channel:data.channel,locale:canonicalLocale(data.locale),theme:['light','dark'].includes(data.theme)?data.theme:'auto'});
+    const website=(initial.websites || [{origin:initial.parent,prefix:''}]).find(site=>site.origin===event.origin);
+    if(started || event.source!==parent || !website || data?.type!=='commentnest:init' || !/^[a-f0-9]{32}$/.test(data.channel || '') || typeof data.thread!=='string' || !data.thread || (website.prefix+data.thread).length>240 || /[\x00-\x1f\x7f]/.test(data.thread) || typeof data.title!=='string' || data.title.length>500)return;
+    started=true;void start({...initial,parent:website.origin,thread:website.prefix+data.thread,title:data.title,channel:data.channel,locale:canonicalLocale(data.locale),theme:['light','dark'].includes(data.theme)?data.theme:'auto'});
   });
 }

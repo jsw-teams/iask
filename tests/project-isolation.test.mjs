@@ -142,6 +142,7 @@ test('media reuses cached bytes only after fresh validation, and deletion blocks
   const savedCache=globalThis.caches,cache=new Map();
   globalThis.caches={default:{match:async request=>cache.get(request.url)?.clone(),put:async(request,response)=>{assert.equal(response.headers.get('cache-control'),'public, max-age=300');cache.set(request.url,response.clone());}}};
   try{await fixture(async({env,upload,post,hash,calls})=>{
+    env.REPORELAY_ADDITIONAL_WEBSITES='[{"origin":"https://unavailable.example","prefix":"other:"}]';
     const attachment=await(await upload()).json();
     const get=()=>handleCommentRequest(new Request(attachment.url),env);
     assert.equal((await get()).status,404,'Unpublished upload is not publicly served');

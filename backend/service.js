@@ -4,6 +4,7 @@ import {commentEnvironment} from './environment.js';
 import {signingEnvironment} from './keys.js';
 import {commentSession,sessionToken} from './auth.js';
 import {canonicalLocale,direction} from '../static/commentnest/i18n.js';
+import {configuredWebsites} from './websites.js';
 
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = value => JSON.stringify(value).replace(/</g,'\\u003c');
@@ -27,7 +28,7 @@ export async function handleServiceRequest(request, suppliedEnv) {
   }
   if(!url.pathname.startsWith('/commentnest/') && !['/frame','/auth'].includes(url.pathname))return null;
   if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405,headers:{Allow:'GET, HEAD'}});
-  const website=origin(env.COMMENTNEST_WEBSITE_ORIGIN || env.REPORELAY_SITE_ORIGIN);
+  const websites=configuredWebsites(env),website=websites[0].origin;
   const service=origin(env.REPORELAY_SITE_ORIGIN);
   if(!website || service!==url.origin)return new Response('Comment service is not configured',{status:503});
   const nonce=crypto.randomUUID().replaceAll('-','');
@@ -50,25 +51,27 @@ export async function handleServiceRequest(request, suppliedEnv) {
     const parent=origin(url.searchParams.get('parent'));
     const channel=url.searchParams.get('channel');
     const thread=url.searchParams.get('thread');
-    if(url.pathname!=='/frame' && (parent!==website || !/^[a-f0-9]{32}$/.test(channel || '') || !thread || thread.length>240 || /[\x00-\x1f\x7f]/.test(thread)))
+    const embedding=websites.find(site=>site.origin===parent);
+    if(url.pathname!=='/frame' && (!embedding || !/^[a-f0-9]{32}$/.test(channel || '') || !thread || thread.length>240 || /[\x00-\x1f\x7f]/.test(thread)))
       return new Response('Invalid widget context',{status:400});
     const locale=canonicalLocale(url.searchParams.get('locale'));
     const theme=['light','dark'].includes(url.searchParams.get('theme'))?url.searchParams.get('theme'):'auto';
-    const context=url.pathname==='/frame'?{parent:website,maxAttachmentBytes:env.REPORELAY_MAX_ATTACHMENT_BYTES || 5_000_000}:{thread,title:(url.searchParams.get('title') || '').slice(0,500),parent,channel,locale,theme,maxAttachmentBytes:env.REPORELAY_MAX_ATTACHMENT_BYTES || 5_000_000};
+    const context=url.pathname==='/frame'?{parent:website,websites,maxAttachmentBytes:env.REPORELAY_MAX_ATTACHMENT_BYTES || 5_000_000}:{thread:(embedding?.prefix || '')+thread,title:(url.searchParams.get('title') || '').slice(0,500),parent,channel,locale,theme,maxAttachmentBytes:env.REPORELAY_MAX_ATTACHMENT_BYTES || 5_000_000};
     let manifest={};
     try {const response=await (env.COMMENTNEST_ASSETS||env.ASSETS)?.fetch(new Request(new URL('/commentnest/manifest.json',url)));if(response?.ok)manifest=await response.json();}catch{}
     context.localeFiles=manifest.localeFiles || {};
     const asset=name=>/^[a-z]+\.[a-f0-9]{16}\.(js|css)$/.test(manifest[name]||'')?manifest[name]:name;
     const name=new Intl.Locale(locale).language==='zh'?'我提问':'iask';
     const body='<!doctype html><html lang="'+escape(locale)+'" dir="'+direction(locale)+'" data-theme="'+theme+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+name+'</title><link rel="stylesheet" href="/commentnest/'+asset('widget.css')+'"></head><body><main id="commentnest"></main><script nonce="'+nonce+'" type="application/json" id="commentnest-context">'+json(context)+'</script><script type="module" src="/commentnest/'+asset('embed.js')+'"></script></body></html>';
-    return html(body,"default-src 'none'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors "+website+"; base-uri 'none'; form-action 'self'",request);
+    return html(body,"default-src 'none'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors "+websites.map(site=>site.origin).join(' ')+"; base-uri 'none'; form-action 'self'",request);
   }
   const assets=env.COMMENTNEST_ASSETS || env.ASSETS;
   if(!assets)return new Response('Not found',{status:404});
   const response=await assets.fetch(request);
   const headers=new Headers(response.headers);
   headers.set('X-Content-Type-Options','nosniff');
-  headers.set('Access-Control-Allow-Origin',website);
+  const requesting=request.headers.get('Origin');
+  headers.set('Access-Control-Allow-Origin',websites.some(site=>site.origin===requesting)?requesting:website);
   headers.set('Vary','Origin');
   headers.set('Cross-Origin-Resource-Policy','cross-origin');
   if(response.ok)headers.set('Cache-Control',/\.[a-f0-9]{16}\.(js|css|json|png|jpe?g|gif|webp|avif)$/.test(url.pathname)?'public, max-age=31536000, immutable':url.pathname.endsWith('/widget.js')?'public, max-age=60, must-revalidate':'public, max-age=300, must-revalidate');

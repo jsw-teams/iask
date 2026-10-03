@@ -22,7 +22,9 @@
     "wrangler.jsonc",
     ".dev.vars.example",
     "api",
-    "vercel.json"
+    "vercel.json",
+    "netlify",
+    "netlify.toml"
   ],
   "repository": {
     "type": "git",
@@ -30,11 +32,12 @@
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "build": "node --check backend/cloudflare/worker.js && node --check api/service.js && node tools/build.mjs",
+    "build": "node --check backend/cloudflare/worker.js && node --check api/service.js && node --check netlify/functions/service.mjs && node tools/build.mjs",
     "deploy": "npm run build && wrangler deploy",
     "deploy:cloudflare": "npm run build && wrangler deploy",
     "deploy:vercel": "npm run build && npx vercel deploy --prod",
-    "deploy:production": "npm run build && wrangler deploy --config backend/cloudflare/wrangler.production.jsonc"
+    "deploy:production": "npm run build && wrangler deploy --config backend/cloudflare/wrangler.production.jsonc",
+    "deploy:netlify": "npm run build && npx netlify-cli deploy --prod"
   },
   "bin": {
     "iask": "tools/cli.mjs"
@@ -70,6 +73,7 @@
     }
   },
   "dependencies": {
+    "@netlify/database": "2.0.1",
     "pg": "^8.16.3",
     "sharp": "0.35.5"
   }

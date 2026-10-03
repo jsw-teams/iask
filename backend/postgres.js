@@ -9,7 +9,7 @@ const lockId = name => createHash('sha256').update(name).digest().readBigInt64BE
 // A session advisory lock spans the entire GitHub operation, but individual state writes
 // commit immediately. The uncertain-creation marker survives a timeout or process exit.
 // Database disconnects release the lock; no expiring lease can permit overlapping writes.
-export function createPostgresNamespace(connectionString, {pool: suppliedPool} = {}) {
+export function createPostgresNamespace(connectionString, {pool: suppliedPool, initializeSchema = true} = {}) {
   if (!suppliedPool && !connectionString) throw new Error('COMMENTNEST_DATABASE_URL is required');
   let connection;
   if (!suppliedPool) {
@@ -23,7 +23,7 @@ export function createPostgresNamespace(connectionString, {pool: suppliedPool} =
   pool.on?.('error', () => {});
   let initialized;
   let environment;
-  const ready = () => initialized ||= pool.query(schema).catch(error => {initialized = undefined; throw error;});
+  const ready = () => initialized ||= (initializeSchema ? pool.query(schema) : Promise.resolve()).catch(error => {initialized = undefined; throw error;});
   return {
     idFromName: name => String(name),
     get(name) {
@@ -53,7 +53,7 @@ export function createPostgresNamespace(connectionString, {pool: suppliedPool} =
             }
           };
           // Dynamic import avoids coupling the shared API to Node.js or PostgreSQL.
-          const {CommentCoordinator} = await import('../comments.js');
+          const {CommentCoordinator} = await import('./comments.js');
           return await new CommentCoordinator({storage}, thisEnvironment()).fetch(request);
         } catch (error) {
           broken = true;
