@@ -1,9 +1,9 @@
-import { dataScope } from '../src/scope.js';
+import { dataScope } from '../backend/scope.js';
 const scope = await dataScope({REPORELAY_SITE_ORIGIN:'https://js.gripe',REPORELAY_REPOSITORY:'jsw-teams/web'});
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { worker, appDefaults, mockInstallation, mockRepositoryInstallation } from './helpers.mjs';
-import { signValue } from '../src/auth.js';
+import { signValue } from '../backend/auth.js';
 const origin='https://js.gripe';
 async function scenario(run, override) {
   const thread='recovery-'+crypto.randomUUID();

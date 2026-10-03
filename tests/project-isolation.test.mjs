@@ -1,9 +1,9 @@
-import { dataScope } from '../src/scope.js';
+import { dataScope } from '../backend/scope.js';
 const scope = await dataScope({REPORELAY_SITE_ORIGIN:'https://js.gripe',REPORELAY_REPOSITORY:'jsw-teams/web'});
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleCommentRequest, CommentCoordinator, createRepositoryClient } from '../src/index.js';
-import { signValue, verifyValue, commentSession } from '../src/auth.js';
+import { handleCommentRequest, CommentCoordinator, createRepositoryClient } from '../backend/index.js';
+import { signValue, verifyValue, commentSession } from '../backend/auth.js';
 import { appDefaults, mockInstallation, mockRepositoryInstallation } from './helpers.mjs';
 
 const origin = 'https://js.gripe';
@@ -137,15 +137,34 @@ test('closing a thread also prevents media uploads',async()=>{
   });
 });
 
-test('media replies validate bytes and set image MIME without forwarding cookies',async()=>{
-  await fixture(async({env,hash})=>{
-    const response=await handleCommentRequest(new Request(origin+'/api/comments/media/' + scope + '/'+hash+'/'+crypto.randomUUID()+'.png'),env);
+test('media reuses cached bytes only after fresh validation, and deletion blocks cached attachments',async()=>{
+  let records=[],issueDeleted=false;
+  const savedCache=globalThis.caches,cache=new Map();
+  globalThis.caches={default:{match:async request=>cache.get(request.url)?.clone(),put:async(request,response)=>{assert.equal(response.headers.get('cache-control'),'public, max-age=300');cache.set(request.url,response.clone());}}};
+  try{await fixture(async({env,upload,post,hash,calls})=>{
+    const attachment=await(await upload()).json();
+    const get=()=>handleCommentRequest(new Request(attachment.url),env);
+    assert.equal((await get()).status,404,'Unpublished upload is not publicly served');
+    assert.equal((await post({body:'Image',attachments:[{url:attachment.url,receipt:attachment.receipt}]})).status,201);
+    const response=await get();
     assert.equal(response.status,200);
     assert.equal(response.headers.get('content-type'),'image/png');
     assert.equal(response.headers.get('set-cookie'),null);
     assert.equal(response.headers.get('x-content-type-options'),'nosniff');
+    assert.equal(response.headers.get('cache-control'),'no-store');
+    const downloads=()=>calls.filter(call=>call.path.includes('/contents/')&&call.method==='GET').length;
+    assert.equal(downloads(),1);assert.equal((await get()).status,200);assert.equal(downloads(),1,'A validated second view reuses file bytes');
     assert.equal((await handleCommentRequest(new Request(origin+'/api/comments/media/old-tests/'+hash+'/old.png'),env)).status,404);
-  });
+    const saved=records;records=[];assert.equal((await get()).status,404,'Deleting its last comment removes public access');
+    records=saved;issueDeleted=true;assert.equal((await get()).status,404,'Deleting the Issue removes public access');
+  },(path,init)=>{
+    if(path.endsWith('/issues/42') && issueDeleted)return new Response(null,{status:404});
+    if(path.endsWith('/issues/42/comments') && init.method==='POST') {
+      const record={id:123,user:{login:'comment-bot[bot]'},body:JSON.parse(init.body).body};records.push(record);return Response.json(record,{status:201});
+    }
+    if(path.includes('/issues/42/comments?'))return Response.json(records);
+    return null;
+  });}finally{globalThis.caches=savedCache;}
 });
 
 test('an absent coordinator fails explicitly and methods are restricted',async()=>{

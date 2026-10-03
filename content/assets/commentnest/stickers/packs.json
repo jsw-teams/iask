@@ -1,0 +1,242 @@
+{
+  "packs": [
+    {
+      "id": "faces",
+      "label": {
+        "en": "Expressions",
+        "zh-CN": "表情",
+        "zh-SG": "表情",
+        "zh-TW": "表情"
+      },
+      "items": [
+        {
+          "label": {
+            "en": "Grin",
+            "zh-CN": "开心",
+            "zh-SG": "开心",
+            "zh-TW": "開心"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f600.png"
+        },
+        {
+          "label": {
+            "en": "Laugh",
+            "zh-CN": "笑哭",
+            "zh-SG": "笑哭",
+            "zh-TW": "笑哭"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f602.png"
+        },
+        {
+          "label": {
+            "en": "Wink",
+            "zh-CN": "眨眼",
+            "zh-SG": "眨眼",
+            "zh-TW": "眨眼"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f609.png"
+        },
+        {
+          "label": {
+            "en": "Love",
+            "zh-CN": "喜欢",
+            "zh-SG": "喜欢",
+            "zh-TW": "喜歡"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f60d.png"
+        },
+        {
+          "label": {
+            "en": "Think",
+            "zh-CN": "思考",
+            "zh-SG": "思考",
+            "zh-TW": "思考"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f914.png"
+        },
+        {
+          "label": {
+            "en": "Cry",
+            "zh-CN": "哭泣",
+            "zh-SG": "哭泣",
+            "zh-TW": "哭泣"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f62d.png"
+        },
+        {
+          "label": {
+            "en": "Surprise",
+            "zh-CN": "惊讶",
+            "zh-SG": "惊讶",
+            "zh-TW": "驚訝"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f631.png"
+        },
+        {
+          "label": {
+            "en": "Sleep",
+            "zh-CN": "困了",
+            "zh-SG": "困了",
+            "zh-TW": "睏了"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f634.png"
+        },
+        {
+          "label": {
+            "en": "LOL",
+            "zh-CN": "大笑",
+            "zh-SG": "大笑",
+            "zh-TW": "大笑"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f923.png"
+        },
+        {
+          "label": {
+            "en": "Cool",
+            "zh-CN": "酷",
+            "zh-SG": "酷",
+            "zh-TW": "酷"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f60e.png"
+        },
+        {
+          "label": {
+            "en": "Eye roll",
+            "zh-CN": "无语",
+            "zh-SG": "无语",
+            "zh-TW": "無語"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f644.png"
+        },
+        {
+          "label": {
+            "en": "Affection",
+            "zh-CN": "暖心",
+            "zh-SG": "暖心",
+            "zh-TW": "暖心"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f970.png"
+        }
+      ]
+    },
+    {
+      "id": "reactions",
+      "label": {
+        "en": "Reactions",
+        "zh-CN": "动作与反应",
+        "zh-SG": "动作与反应",
+        "zh-TW": "動作與反應"
+      },
+      "items": [
+        {
+          "label": {
+            "en": "Thumbs up",
+            "zh-CN": "赞",
+            "zh-SG": "赞",
+            "zh-TW": "讚"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f44d.png"
+        },
+        {
+          "label": {
+            "en": "Applause",
+            "zh-CN": "鼓掌",
+            "zh-SG": "鼓掌",
+            "zh-TW": "鼓掌"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f44f.png"
+        },
+        {
+          "label": {
+            "en": "Thanks",
+            "zh-CN": "感谢",
+            "zh-SG": "感谢",
+            "zh-TW": "感謝"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f64f.png"
+        },
+        {
+          "label": {
+            "en": "Wave",
+            "zh-CN": "你好",
+            "zh-SG": "你好",
+            "zh-TW": "你好"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f44b.png"
+        },
+        {
+          "label": {
+            "en": "Celebrate",
+            "zh-CN": "庆祝",
+            "zh-SG": "庆祝",
+            "zh-TW": "慶祝"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f389.png"
+        },
+        {
+          "label": {
+            "en": "Fire",
+            "zh-CN": "火热",
+            "zh-SG": "火热",
+            "zh-TW": "火熱"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f525.png"
+        },
+        {
+          "label": {
+            "en": "Rocket",
+            "zh-CN": "起飞",
+            "zh-SG": "起飞",
+            "zh-TW": "起飛"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f680.png"
+        },
+        {
+          "label": {
+            "en": "Heart",
+            "zh-CN": "爱心",
+            "zh-SG": "爱心",
+            "zh-TW": "愛心"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u2764.png"
+        },
+        {
+          "label": {
+            "en": "100",
+            "zh-CN": "满分",
+            "zh-SG": "满分",
+            "zh-TW": "滿分"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f4af.png"
+        },
+        {
+          "label": {
+            "en": "Strength",
+            "zh-CN": "加油",
+            "zh-SG": "加油",
+            "zh-TW": "加油"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f4aa.png"
+        },
+        {
+          "label": {
+            "en": "Coffee",
+            "zh-CN": "咖啡",
+            "zh-SG": "咖啡",
+            "zh-TW": "咖啡"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u2615.png"
+        },
+        {
+          "label": {
+            "en": "Look",
+            "zh-CN": "围观",
+            "zh-SG": "围观",
+            "zh-TW": "圍觀"
+          },
+          "src": "/commentnest/stickers/noto/emoji_u1f440.png"
+        }
+      ]
+    }
+  ]
+}

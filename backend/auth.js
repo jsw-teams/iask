@@ -48,13 +48,14 @@ export async function verifyValue(value, env, purpose) {
 function cookie(request, name) {
   return request.headers.get('cookie')?.split(';').map(p => p.trim()).find(p => p.startsWith(name + '='))?.slice(name.length + 1);
 }
+export const sessionToken = request => cookie(request, SESSION);
 function setCookie(name, value, seconds) {
   return name + '=' + value + '; Path=/; Max-Age=' + seconds + '; Secure; HttpOnly; SameSite=Lax';
 }
 export async function commentSession(request, env) {
   const connect = connectConfig(env);
   if (!authReady(env) || new URL(request.url).origin !== connect.origin) return null;
-  const session = await verifyValue(cookie(request, SESSION), env, 'session');
+  const session = await verifyValue(request.headers.get('x-comments-session') || sessionToken(request), env, 'session');
   if (!session || !Number.isFinite(session.exp) || session.exp <= Date.now() || !Number.isSafeInteger(session.id) || session.id <= 0 ||
     !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(session.login) || typeof session.csrf !== 'string') return null;
   return session;
@@ -124,7 +125,7 @@ export async function handleCommentAuth(request, env) {
     const token = await exchange.json();
     if (!exchange.ok || token.error || typeof token.access_token !== 'string') throw new Error('Token exchange failed');
     const profile = await fetch('https://api.github.com/user', { redirect: 'manual', headers: {
-      Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + token.access_token, 'User-Agent': 'RepoRelay', 'X-GitHub-Api-Version': '2026-03-10' } });
+      Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + token.access_token, 'User-Agent': 'CommentNest', 'X-GitHub-Api-Version': '2026-03-10' } });
     const user = await profile.json();
     if (!profile.ok || !Number.isSafeInteger(user.id) || user.id <= 0 || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(user.login)) throw new Error('Invalid GitHub identity');
     const session = await signValue({ id: user.id, login: user.login, csrf: random(), exp: Date.now() + 86400000 }, env, 'session');

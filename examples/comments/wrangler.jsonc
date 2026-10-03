@@ -1,34 +1,34 @@
 {
-  "name": "reporelay-demo",
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "commentnest",
   "main": "worker.js",
-  "compatibility_date": "2026-09-01",
+  "compatibility_date": "2026-10-03",
   "vars": {
-    "REPORELAY_REPOSITORY": "YOUR_ACCOUNT/PRIVATE_REPOSITORY",
-    "REPORELAY_SITE_ORIGIN": "https://comments.example.com",
-    "REPORELAY_GITHUB_APP_ID": "SET_APP_ID",
-    "REPORELAY_GITHUB_APP_CLIENT_ID": "SET_CLIENT_ID"
+    "COMMENTNEST_SITE_ORIGIN": "https://comments.example.com",
+    "COMMENTNEST_WEBSITE_ORIGIN": "https://www.example.com",
+    "COMMENTNEST_REPOSITORY": "owner/comments",
+    "COMMENTNEST_GITHUB_APP_ID": "",
+    "COMMENTNEST_GITHUB_APP_CLIENT_ID": ""
+  },
+  "assets": {
+    "directory": "../../dist",
+    "binding": "COMMENTNEST_ASSETS",
+    "run_worker_first": true
   },
   "durable_objects": {
     "bindings": [
       {
-        "name": "REPORELAY_THREADS",
+        "name": "COMMENTNEST_THREADS",
         "class_name": "CommentCoordinator"
       }
     ]
   },
   "migrations": [
     {
-      "tag": "reporelay-threads",
+      "tag": "comments",
       "new_sqlite_classes": [
         "CommentCoordinator"
       ]
     }
-  ],
-  "assets": {
-    "directory": "public",
-    "binding": "ASSETS",
-    "run_worker_first": [
-      "/api/*"
-    ]
-  }
+  ]
 }

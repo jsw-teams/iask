@@ -1,164 +1,104 @@
-# RepoRelay
+# CommentNest · 评巢
 
-RepoRelay lets a website use a private GitHub repository without sending repository credentials to visitors. GitHub App user authorization identifies the visitor; a repository-scoped installation token performs the server-side operations.
+A self-hosted comment service for websites. CommentNest owns the widget, styling, translations, GitHub sign-in, avatars, sticker gallery, uploads and deletion. A website supplies its backend URL and published article context, and loads the widget only after the visitor opts in.
 
-Each operator self-hosts the Worker and registers their own GitHub App. The callback is generated from that instance's required `REPORELAY_SITE_ORIGIN`; there is no default callback or upstream service hosted by the project author. Other instances keep working independently if JS.GRIPE stops operating.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jsw-teams/CommentNest)
 
-The first application is the article discussion system on [JS.GRIPE](https://js.gripe). This repository also includes an example for publishing an explicitly allowed private file behind application authentication.
+The button copies this repository to your GitHub account and creates your Worker. Supply your own GitHub App settings and exact website/service origins during setup. Deploying the template does not register or install a GitHub App for you. The project does not depend on a service operated by its author.
 
-## What it provides
+[中文安装与 EdgePress 接入](docs/edgepress.md) · [Release notes](CHANGELOG.md) · [Storage and upgrade policy](docs/lifecycle.md)
 
-- One readable Issue per article, shared across language versions.
-- Verified GitHub identity, PKCE, same-origin requests, CSRF and signed comment metadata.
-- Same-origin GitHub avatars and deletion of your own comments, verified by user ID and thread ownership.
-- PNG, JPEG, GIF, WebP and AVIF attachments: four per comment, five million bytes per file.
-- Signed upload receipts tied to the uploading visitor and article.
-- A Durable Object per project and article to serialize first comments and persist the Issue number.
-- Moderation through GitHub: delete a comment, close/lock a thread, or delete an Issue to start a replacement on the next submission.
-- A server-only file client restricted to one configured repository, with read-only installation tokens by default.
+## Project layout
 
-The browser renders comment text as text. Images have validated signatures and explicit image response types. Repository keys and GitHub tokens remain on the server. Attachment URLs are public: use the upload interface only for images intended for publication.
+`backend/` owns the Worker, GitHub App authorization, comment API and Durable Objects. `static/commentnest/` owns the widget HTML renderer, CSS, translations and browser interaction. `content/assets/commentnest/stickers/` is the only source of sticker images and their catalog. `tools/` builds deployable assets in `dist/`. EdgePress supplies a configured backend URL and article context; it contains no comment editor or comment stylesheet.
 
-## Installation
+## Features
 
-Node.js 22.12 or later is required for development. There are no runtime npm dependencies.
+- An automatically sized iframe isolates the comment UI from the site's theme. Responsive layouts, light and dark modes, keyboard navigation, English, Simplified Chinese and Traditional Chinese.
+- GitHub App authorization verifies visitors. Repository credentials and GitHub access tokens stay on the server.
+- Avatars, profile links, plain text comments, a real local sticker gallery and image uploads.
+- Delete your own comments: user ID, signature and thread ownership are verified on the server.
+- Moderate using GitHub Issues: close/lock discussions, remove comments or delete an Issue.
+- Stable discussions for published articles/pages, shared across translations. Unknown threads are rejected.
+- Durable Objects serialize writes and persist thread mappings and signing keys. No manual signing secrets, installation IDs or bot logins.
+- Cross-origin widgets sign in through a first-party popup and keep a signed CommentNest session in iframe session storage. GitHub login does not require third-party cookies, and the GitHub access token never enters browser storage.
 
-```sh
-git clone https://github.com/jsw-teams/RepoRelay.git
-cd RepoRelay
-npm test
-npm pack --dry-run
-```
+## Deploy
 
-For an application, install from GitHub and commit the resulting lockfile. Use a specific commit for reproducible deployments; this package is not currently published to npm.
+Use the button above, or clone this repository and run `npm ci`, `npm test`, `npm run build`, then `npm run deploy`. Development requires Node.js 22.12 or later. Edit [wrangler.jsonc](wrangler.jsonc):
 
-```sh
-npm install github:jsw-teams/RepoRelay#202610.3
-```
-
-## Register and install a GitHub App
-
-For the complete website integration, see [installing and applying RepoRelay to EdgePress](docs/edgepress.md), including optional loading, page discussions and the local sticker gallery. Release notes are maintained separately in [CHANGELOG.md](CHANGELOG.md).
-
-Create an App in your GitHub account. Set the website's exact callback URL, for example `https://comments.example.com/api/comments/callback`. Disable webhook delivery and device flow. Keep wildcard callback matching off. User authorization happens when a visitor chooses to sign in on the website.
-
-Repository permissions for comments and media:
-
-| Permission | Access |
+| Setting | Value |
 | --- | --- |
-| Metadata | Read |
-| Issues | Read and write |
-| Contents | Read and write |
+| `COMMENTNEST_SITE_ORIGIN` | Exact HTTPS origin of the comment Worker, such as `https://comments.example.com` |
+| `COMMENTNEST_WEBSITE_ORIGIN` | Exact HTTPS origin of the embedding website, such as `https://journal.example.com` |
+| `COMMENTNEST_REPOSITORY` | Your `owner/repository` with Issues enabled |
+| `COMMENTNEST_GITHUB_APP_ID` | App ID from GitHub |
+| `COMMENTNEST_GITHUB_APP_CLIENT_ID` | Client ID from GitHub |
 
-Install the App only on the chosen storage repository. It must have Issues enabled and an initial commit for the media branch. The public source repository and the private comment repository are separate roles. Generate a client secret and a private key. PKCS#1 and PKCS#8 PEM keys are supported.
+Store the complete PEM private key and client secret as Worker Secrets:
 
-The Worker discovers the repository’s installation and bot identity from GitHub automatically. See [GitHub user authorization](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app) and [repository-scoped installation tokens](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app).
+```sh
+npx wrangler secret put COMMENTNEST_GITHUB_APP_PRIVATE_KEY
+npx wrangler secret put COMMENTNEST_GITHUB_APP_CLIENT_SECRET
+```
 
-## Configure a comment Worker
+The Deploy button asks for the same Secrets using [.dev.vars.example](.dev.vars.example). Never commit a filled `.dev.vars`, private key or client secret. Signing keys are generated on first use and stored persistently. Keep the Durable Object namespace when upgrading.
 
-Start from [examples/comments/wrangler.jsonc](examples/comments/wrangler.jsonc). Replace its IDs, repository and origin. Deploy a Worker that exports `CommentCoordinator`, and bind `REPORELAY_THREADS` to it with a SQLite Durable Object migration. The [Cloudflare Durable Objects guide](https://developers.cloudflare.com/durable-objects/get-started/) describes these bindings.
+Register your own GitHub App with the exact callback `<COMMENTNEST_SITE_ORIGIN>/api/comments/callback`. Turn off webhooks, wildcard callbacks and device flow. Grant **Metadata: read**, **Issues: read/write** and **Contents: read/write**. Install it only on the chosen comment repository, which needs an initial commit for media storage. Visitors authorize their identity; they do not install the App on their repositories.
+
+## Connect a website
+
+EdgePress needs `provider: commentnest` and `backendUrl` inside its consent service configuration. See the [complete configuration](docs/edgepress.md). It supplies the article's thread ID, title and locale, and loads the widget after consent. When using a separately deployed service, the website needs no CommentNest npm dependency, GitHub App keys, comment CSS or sticker files.
+
+For other website builders, add a container and load this module after your consent system permits comments:
+
+```html
+<section id="comments" data-comments-thread="article-id" data-comments-title="Article title"></section>
+```
 
 ```js
-import { handleCommentRequest } from '@jsw-teams/reporelay';
-export { CommentCoordinator } from '@jsw-teams/reporelay';
-
-export default {
-  async fetch(request, env) {
-    return await handleCommentRequest(request, env) || env.ASSETS.fetch(request);
-  }
-};
+const backendUrl = siteConfig.comments.backendUrl;
+const {mount} = await import(new URL('/commentnest/widget.js', backendUrl).href);
+mount(document.getElementById('comments'), {backendUrl});
 ```
 
-Required variables:
-
-```text
-REPORELAY_REPOSITORY=owner/private-repository
-REPORELAY_SITE_ORIGIN=https://comments.example.com
-REPORELAY_GITHUB_APP_ID=<App ID>
-REPORELAY_GITHUB_APP_CLIENT_ID=<Client ID>
-```
-
-Add these Worker Secrets with Wrangler or the Cloudflare dashboard:
-
-```sh
-npx wrangler secret put REPORELAY_GITHUB_APP_PRIVATE_KEY
-npx wrangler secret put REPORELAY_GITHUB_APP_CLIENT_SECRET
-```
-
-Session and identity signing keys are generated automatically on first use and persisted in the project’s Durable Object. They are separate per website and survive restarts, release upgrades and App credential rotation. Do not delete that Durable Object namespace. Operators with existing explicit signing Secrets may retain them; these advanced overrides remain supported so existing formal records keep their original signatures. Never commit `.dev.vars` or private keys. For local development, copy `.dev.vars.example` to the example directory and fill it there. The HTTPS origin must match the request origin exactly.
-
-The trusted `ASSETS` binding supplies `/edgepress/comment-threads.json`:
+Publish the allowlist at your configured website origin, `/edgepress/comment-threads.json`:
 
 ```json
-[{"thread":"hello-world","title":"Hello world"}]
+[{"thread":"article-id","title":"Article title"}]
 ```
 
-Generate this allowlist from published articles. Visitors cannot register arbitrary articles or set the displayed thread title.
-
-## API integration
-
-| Endpoint | Use |
-| --- | --- |
-| `GET /api/comments?thread=<id>` | Read a published discussion |
-| `GET /api/comments/login?return=/article/` | Begin GitHub authorization |
-| `GET /api/comments/callback` | Complete authorization |
-| `GET /api/comments/session` | Read visitor identity and CSRF token |
-| `POST /api/comments/logout` | Clear the session |
-| `POST /api/comments/media/` | Upload image bytes |
-| `GET /api/comments/media/<project>/<hash>/<file>` | Read a published image |
-| `POST /api/comments` | Submit a comment |
-| `DELETE /api/comments` | Delete your own comment using `{ "thread": "<id>", "commentId": "<id>" }` |
-| `GET /api/comments/avatar/<user-id>` | Read a bounded, same-origin GitHub avatar |
-
-Every write requires the website Origin, session cookie and `X-Comments-CSRF`. Uploads additionally require `X-Comments-Thread` and an image Content-Type. Retain the returned `url` and `receipt`; submit them together:
-
-```json
-{"thread":"hello-world","body":"Hello 👋","attachments":[{"url":"<upload URL>","receipt":"<upload receipt>"}],"company":""}
-```
-
-Comments accept 5,000 characters and may contain images without text. Upload receipts expire after one day. The session also expires after one day. Load the API and authentication only after the visitor enables the optional comment integration; reading the main article needs neither service.
-
-Closing or locking an Issue also blocks uploads. Deleted Issue recovery checks repository access before creating a replacement. An ambiguous comment write is never retried automatically. An ambiguous Issue creation stays pending until a matching Issue appears in GitHub search; it does not risk a duplicate. If GitHub did not create that Issue, an operator must resolve the object's `creating` flag before retrying.
-
-## Data isolation
-
-The repository and configured site origin determine the project’s data scope automatically. No extra label is needed. Release updates and App credential rotation keep that scope stable; a different repository or origin uses a separate collection. Existing unrelated test Issues are not imported. Invalid relay metadata is excluded; ordinary maintainer replies remain visible.
-
-Release labels use the year and month followed by the update number within that month, for example `202610.1`. The npm package records the same release as `202610.1.0` to satisfy its package version format. Release labels are independent of stored comment identifiers.
-
-## Compatibility and data lifecycle
-
-This initial release establishes the supported data format; earlier experimental data is not imported. Future updates must continue reading formal production data. Existing data formats have no automatic removal deadline.
-
-The storage contract uses a stable `reporelay-thread:<project>:<article-hash>` Issue marker and signed `reporelay-comment` records containing `format: 1`, identity, article, body and attachment URLs. The format number is internal to stored data and independent of release numbering. Readers ignore unsupported formats without deleting the upstream records. Additive fields must not change existing meaning; future readers must retain support for established formats unless an announced incompatible change requires explicit migration.
-
-If an incompatible change is unavoidable, publish a migration proposal covering affected fields, verification, backup and rollback before adopting it. Migration must be explicit and must preserve original author and source attribution. Do not repost historical comments under an impersonated visitor identity. Unsupported format readers may be removed only under that announced migration plan. Unmigrated records remain retained and isolated; they must not be silently interpreted as the new format. Deprecating an API or feature does not authorize deleting its stored data.
-
-Keep the production origin, repository, article IDs and signing-key Durable Object stable. Preserve its storage and backups: losing identity signing keys makes existing signed comments unreadable and requires a recovery or migration plan. App private keys and client secrets may rotate independently of the data format. A domain or repository move also requires an explicit migration rather than starting over silently.
+EdgePress generates this file from published articles and explicit `comments` page blocks. Other builders should generate it during their own build. The service fetches it only from the configured origin; visitors cannot provide a manifest URL or register arbitrary discussions. The manifest is limited to one million bytes.
 
 ## Multiple websites
 
-One operator may reuse their GitHub App across several websites. Deploy one Worker per website, with its own `REPORELAY_SITE_ORIGIN`; separate signing keys are generated automatically. App IDs and App credentials may be shared by Workers under the same operator. Each repository must be included in the App installation; the appropriate installation is discovered for each repository even when accounts differ. Workers using the same repository still have separate discussion collections because their origins differ.
+Deploy one CommentNest instance per website. Each has its own exact website origin, backend origin, repository configuration and Durable Object namespace. You may reuse an App that you own by registering every instance's exact callback in that App; other operators register their own App. No origin is supplied by the project author.
 
-Register each site's exact `https://<site>/api/comments/callback` in the App. RepoRelay explicitly sends that site's `redirect_uri` and rejects authorization callbacks and submissions on a different origin. GitHub permits [up to ten callback URLs per App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/about-the-user-authorization-callback-url). Additional Apps can serve more sites. Other operators register their own Apps and host their own Workers.
-
-Do not bind several unrelated website domains to a Worker configured for one origin: each instance accepts its configured origin only. Discussion collections are separate by default; sharing discussions between websites would require an explicit separate design.
-
-Deleting a comment removes it from the discussion, but does not delete its stored image objects or copies already cached by a visitor. Image responses are publicly cacheable for a year. The current read endpoint returns at most 500 comments; pagination is not yet part of this release.
-
-## Private-content example
-
-[examples/private-content/worker.js](examples/private-content/worker.js) demonstrates a fixed file allowlist, an application Bearer token and read-only GitHub permissions. The host application decides who can read the file. GitHub sign-in alone is not authorization to access private repository contents.
-
-The client is server-side code:
+Existing same-origin sites can compose the independently owned service with their static website Worker:
 
 ```js
-import { createRepositoryClient } from '@jsw-teams/reporelay';
-const file = await createRepositoryClient(env).readFile('published/release-notes.md', 'main');
+import website from './website-worker.js';
+import {handleServiceRequest} from '@jsw-teams/commentnest';
+export {CommentCoordinator} from '@jsw-teams/commentnest';
+export default {async fetch(request, env, ctx) {
+  return await handleServiceRequest(request, env) || website.fetch(request, env, ctx);
+}};
 ```
 
-It does not accept another repository or an arbitrary upstream URL. Never expose the raw client as an unauthenticated API proxy.
+Install the package from a pinned commit or release; it is not published to npm. Run `commentnest assets dist` after the website's build to copy package-owned widget resources into its static output, and route `/api/comments*` and `/commentnest/*` through the Worker. This composition belongs to the site deployment, not the EdgePress framework. Existing App Secrets and formal comment storage can remain in their original Worker.
+
+## API and limits
+
+The API remains `/api/comments`: read with `?thread=`, submit with POST, delete with DELETE and `{thread,commentId}`. The service owns `/session`, `/login`, `/callback`, `/logout`, `/media/` and `/avatar/<user-id>` below that prefix. Writes require the service's exact Origin, a signed visitor session and `X-Comments-CSRF`. Uploads also require `X-Comments-Thread`.
+
+Comments accept 5,000 characters and four PNG, JPEG, GIF, WebP or AVIF attachments of five million bytes each. Upload receipts and sessions expire after one day. Attachments are public only while referenced by a valid published comment. Deleting the comment or Issue stops service access; underlying files require separate removal. Public attachment responses use `no-store`. Validated file bytes may be cached internally for five minutes, but every request checks the current Issue and signed comment before accessing that cache. Drafts and the cross-origin session remain in the iframe's session storage until cleared, submitted, logged out or expired.
+
+The local sticker gallery uses licensed Noto Emoji images. Extend `content/assets/commentnest/stickers/packs.json` with licensed images or GIFs and retain attribution. No third-party sticker API is called.
+
+## Cost control
+
+Nothing loads before consent. The widget makes no background polling requests. Scripts, stylesheets, catalogs and sticker images receive content fingerprints and long-lived caching; the small loader revalidates after 60 seconds. The gallery loads only when opened. Avatars are cached for one day. Concurrent signing-key reads coalesce, and Worker memory reuses persistent keys for five minutes without replacing their source in Durable Objects. Attachment-byte caching reduces GitHub downloads while retaining fresh deletion checks. Keep the existing DO namespace on upgrades; no alarms or per-request signing objects are created. Cache API entries are local to a data center and may be evicted, so caching reduces expected traffic rather than imposing a hard spending limit. Monitor usage and configure CPU limits and billing notifications for your Cloudflare plan.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT for project code. Bundled sticker artwork retains its included Apache 2.0 license and attribution.

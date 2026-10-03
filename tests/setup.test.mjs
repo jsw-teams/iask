@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CommentCoordinator, handleCommentRequest } from '../src/index.js';
-import { signingEnvironment } from '../src/keys.js';
-import { repositoryInstallation } from '../src/github.js';
-import { signValue, verifyValue } from '../src/auth.js';
+import { CommentCoordinator, handleCommentRequest } from '../backend/index.js';
+import { signingEnvironment } from '../backend/keys.js';
+import { repositoryInstallation } from '../backend/github.js';
+import { signValue, verifyValue } from '../backend/auth.js';
 import { appDefaults } from './helpers.mjs';
 
 function deployment() {
-  const stores=new Map(), objects=new Map();
+  const stores=new Map(), objects=new Map();let requests=0;
   const env={...appDefaults,REPORELAY_SITE_ORIGIN:'https://first.example',REPORELAY_REPOSITORY:'owner/comments',
     REPORELAY_GITHUB_APP_CLIENT_ID:'app',REPORELAY_GITHUB_APP_CLIENT_SECRET:'secret'};
   env.REPORELAY_THREADS={idFromName:name=>name,get:name=>{
@@ -18,10 +18,20 @@ function deployment() {
       stores.set(name,storage);
     }
     if(!objects.has(name))objects.set(name,new CommentCoordinator({storage:stores.get(name)},env));
-    return objects.get(name);
+    return {fetch:request=>{requests++;return objects.get(name).fetch(request);}};
   }};
-  return {env,restart:()=>objects.clear()};
+  return {env,count:()=>requests,restart:()=>{objects.clear();env.REPORELAY_THREADS={...env.REPORELAY_THREADS};}};
 }
+
+test('signing-key requests coalesce and reuse memory for five minutes, then refresh safely',async()=>{
+  const {env,count}=deployment();const originalNow=Date.now;let now=originalNow();Date.now=()=>now;
+  try {
+    const first=await Promise.all(Array.from({length:30},()=>signingEnvironment(env)));
+    assert.equal(count(),1);
+    now+=299999;assert.equal((await signingEnvironment(env)).REPORELAY_IDENTITY_SECRET,first[0].REPORELAY_IDENTITY_SECRET);assert.equal(count(),1);
+    now+=2;assert.equal((await signingEnvironment(env)).REPORELAY_IDENTITY_SECRET,first[0].REPORELAY_IDENTITY_SECRET);assert.equal(count(),2);
+  }finally{Date.now=originalNow;}
+});
 
 test('automatic signing keys are persistent, site-specific and independent of App credential rotation',async()=>{
   const {env,restart}=deployment();

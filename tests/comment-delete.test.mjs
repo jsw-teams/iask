@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {worker,appDefaults,mockRepositoryInstallation,mockInstallation} from './helpers.mjs';
-import {signValue} from '../src/auth.js';
-import {dataScope} from '../src/scope.js';
+import {signValue} from '../backend/auth.js';
+import {dataScope} from '../backend/scope.js';
 
 const env={...appDefaults,REPORELAY_REPOSITORY:'jsw-teams/web',REPORELAY_SITE_ORIGIN:'https://js.gripe',
   REPORELAY_GITHUB_APP_CLIENT_ID:'test-app',REPORELAY_GITHUB_APP_CLIENT_SECRET:'test-secret',

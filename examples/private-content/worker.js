@@ -1,4 +1,4 @@
-import { createRepositoryClient } from '../../src/index.js';
+import { createRepositoryClient } from '../../backend/index.js';
 
 // Application authorization and the file allowlist belong to the host application.
 export default { async fetch(request, env) {

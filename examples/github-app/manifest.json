@@ -1,5 +1,5 @@
 {
-  "name": "RepoRelay YOUR_SITE",
+  "name": "CommentNest YOUR_SITE",
   "url": "https://comments.example.com",
   "redirect_url": "https://comments.example.com",
   "callback_urls": [

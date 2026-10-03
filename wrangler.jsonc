@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "commentnest",
+  "main": "backend/worker.js",
+  "compatibility_date": "2026-10-03",
+  "vars": {
+    "COMMENTNEST_SITE_ORIGIN": "https://comments.example.com",
+    "COMMENTNEST_WEBSITE_ORIGIN": "https://www.example.com",
+    "COMMENTNEST_REPOSITORY": "owner/comments",
+    "COMMENTNEST_GITHUB_APP_ID": "",
+    "COMMENTNEST_GITHUB_APP_CLIENT_ID": ""
+  },
+  "assets": {
+    "directory": "./dist",
+    "binding": "COMMENTNEST_ASSETS",
+    "run_worker_first": true
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "COMMENTNEST_THREADS",
+        "class_name": "CommentCoordinator"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "comments",
+      "new_sqlite_classes": [
+        "CommentCoordinator"
+      ]
+    }
+  ]
+}

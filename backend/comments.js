@@ -1,4 +1,5 @@
 import { dataScope } from './scope.js';
+import { commentEnvironment } from './environment.js';
 import { signingEnvironment, storedSigningKeys } from './keys.js';
 import { githubRequest, installationToken, repositoryInstallation } from './github.js';
 import { GitHubCommentsError } from './errors.js';
@@ -11,7 +12,7 @@ const COMMENT_BODY_MARKER = '<!-- reporelay-comment-body -->';
 const ISSUE_THREAD_MARKER = 'reporelay-thread';
 const COMMENT_LABELS = [
   { name: 'comments', color: '0e8a16', description: 'Article comment threads' },
-  { name: 'reporelay', color: '0969da', description: 'Managed through RepoRelay' }
+  { name: 'reporelay', color: '0969da', description: 'Managed through CommentNest' }
 ];
 const mediaBranch = settings => 'reporelay-media-' + settings.namespace;
 const MAX_COMMENT_MEDIA_BYTES = 5_000_000;
@@ -106,7 +107,7 @@ async function storedCommentBody(session, body, attachments, env, thread) {
   const quotedBody = body.split(/\r?\n/).map((line) => '    ' + line).join('\n');
   const media = attachments.map((url, index) => '![' + escapeMarkdownInline('Attachment ' + (index + 1)) + '](' + url + ')').join('\n\n');
   return '<!-- ' + COMMENT_MARKER + ':' + metadata + ' -->\n\n' +
-    '> Comment by **' + escapeMarkdownInline(name) + '** via RepoRelay\n\n' +
+    '> Comment by **' + escapeMarkdownInline(name) + '** via CommentNest\n\n' +
     COMMENT_BODY_MARKER + '\n' + quotedBody + (media ? '\n\n' + media : '');
 }
 
@@ -223,7 +224,7 @@ async function normalizeCommentIssue(settings, issue, thread, title, requestUrl)
     '',
     'Comment thread for [' + title + '](' + siteUrl + '/).',
     '',
-    'Managed by RepoRelay. Delete an individual Issue Comment to moderate one post; close or lock this Issue to close the article comment section.'
+    'Managed by CommentNest. Delete an individual Issue Comment to moderate one post; close or lock this Issue to close the article comment section.'
   ].join('\n');
   return githubRequest(settings, issuePath(settings, issue.number), {
     method: 'PATCH',
@@ -249,7 +250,7 @@ async function createCommentIssue(settings, thread, title, requestUrl) {
         '',
         'Comment thread for **' + title.replace(/[\r\n]/g, ' ') + '** on ' + siteUrl + '.',
         '',
-        'This single Issue is the RepoRelay discussion thread for the article across its localized versions.',
+        'This single Issue is the CommentNest discussion thread for the article across its localized versions.',
         'Delete an individual Issue Comment to remove one inappropriate post. Close or lock this Issue to close the article comment section.',
         'If this Issue is deleted, the next authenticated website comment will create a replacement thread.'
       ].join('\n')
@@ -319,8 +320,26 @@ async function handleCommentMedia(request, env) {
   const relative = publicPath.slice(settings.namespace.length + 1);
 
   if (request.method === 'GET') {
-    if (!/^[0-9a-f]{24}\/[A-Za-z0-9._-]{1,120}$/.test(relative)) return json({ error: 'not_found' }, 404);
+    if (!/^[0-9a-f]{24}\/[0-9a-f-]{36}\.(png|jpg|gif|webp|avif)$/.test(relative)) return json({ error: 'not_found' }, 404);
     try {
+      const hash=relative.split('/')[0];
+      const thread=await mediaThread(request,env,hash);
+      if(thread instanceof Response)return thread;
+      const issue=await findCommentIssue(settings,thread);
+      if(!issue)return json({error:'not_found'},404);
+      let current;
+      try {current=await githubRequest(settings,issuePath(settings,issue.number));}
+      catch(error) {if(missingIssue(error))return json({error:'not_found'},404);throw error;}
+      if(!current.body?.includes(issueMarker(settings,hash)))return json({error:'not_found'},404);
+      const comments=await readIssueComments(settings,issue.number,env,thread);
+      if(!comments.some(comment=>comment.attachments.includes(url.origin+url.pathname)))return json({error:'not_found'},404);
+      // Only file bytes are cached. Issue and signed-comment checks above always run first.
+      const fileCache=globalThis.caches?.default;
+      const cacheRequest=new Request(new URL('/__commentnest-cache/media/'+settings.namespace+'/'+relative,url.origin));
+      try {
+        const cached=await fileCache?.match(cacheRequest);
+        if(cached){const headers=new Headers(cached.headers);headers.set('Cache-Control','no-store');return new Response(cached.body,{headers});}
+      }catch{}
       const token = await installationToken(settings);
       const api = 'https://api.github.com/repos/' + encodeURIComponent(settings.owner) + '/' + encodeURIComponent(settings.repo) +
         '/contents/' + relative + '?ref=' + encodeURIComponent(mediaBranch(settings));
@@ -329,7 +348,7 @@ async function handleCommentMedia(request, env) {
         headers: {
           Accept: 'application/vnd.github.raw+json',
           Authorization: 'Bearer ' + token,
-          'User-Agent': 'RepoRelay',
+          'User-Agent': 'CommentNest',
           'X-GitHub-Api-Version': '2026-03-10'
         }
       });
@@ -339,9 +358,10 @@ async function handleCommentMedia(request, env) {
       if (!type) return json({ error: 'not_found' }, 404);
       const bytes = response.body ? await readBoundedBody(response.body, MAX_COMMENT_MEDIA_BYTES) : null;
       if (!bytes || !validMediaBytes(type, bytes)) return json({ error: 'invalid_media' }, 502);
+      try {await fileCache?.put(cacheRequest,new Response(bytes,{headers:{'Content-Type':type,'Cache-Control':'public, max-age=300','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"}}));}catch{}
       return new Response(bytes, { headers: {
         'Content-Type': type,
-        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff',
         'Content-Security-Policy': "default-src 'none'; sandbox"
       }});
@@ -552,16 +572,35 @@ async function handleComments(request, env) {
 }
 
 
-async function publishedThread(request, env, thread) {
+async function publishedThreads(request, env) {
   try {
-    const response = await env.ASSETS.fetch(new Request(new URL('/edgepress/comment-threads.json', request.url)));
+    const website = env.COMMENTNEST_WEBSITE_ORIGIN || env.REPORELAY_SITE_ORIGIN;
+    const address = new URL('/edgepress/comment-threads.json', website);
+    // A remote allowlist is fetched only from the operator's fixed HTTPS origin.
+    // Never accept an arbitrary manifest URL supplied by a visitor.
+    if (address.protocol !== 'https:') return json({error:'comments_unavailable'},503);
+    const response = address.origin === new URL(request.url).origin && env.ASSETS
+      ? await env.ASSETS.fetch(new Request(address))
+      : await fetch(address, {redirect:'manual',headers:{Accept:'application/json'}});
     if (!response.ok) return json({ error: 'comments_unavailable' }, 503);
-    const manifest = await response.json();
+    const bytes = response.body ? await readBoundedBody(response.body, 1_000_000) : null;
+    if (!bytes) return json({error:'comments_unavailable'},503);
+    const manifest = JSON.parse(new TextDecoder().decode(bytes));
     if (!Array.isArray(manifest)) return json({ error: 'comments_unavailable' }, 503);
-    return manifest.find(item => item.thread === thread) || json({ error: 'unknown_thread' }, 404);
+    return manifest.filter(item=>validThread(item?.thread) && typeof item.title==='string' && item.title.length<=500);
   } catch { return json({ error: 'comments_unavailable' }, 503); }
 }
 
+async function publishedThread(request,env,thread) {
+  const manifest=await publishedThreads(request,env);
+  return manifest instanceof Response?manifest:manifest.find(item=>item.thread===thread) || json({error:'unknown_thread'},404);
+}
+async function mediaThread(request,env,hash) {
+  const manifest=await publishedThreads(request,env);
+  if(manifest instanceof Response)return manifest;
+  for(const entry of manifest)if(await threadHash(entry.thread)===hash)return entry.thread;
+  return json({error:'not_found'},404);
+}
 // A single object per repository/namespace/article serializes GitHub operations.
 // Persisting the Issue number avoids depending on GitHub search indexing after writes.
 export class CommentCoordinator {
@@ -583,12 +622,14 @@ export class CommentCoordinator {
 }
 
 export async function handleCommentRequest(request, env, { coordinated = false } = {}) {
+  env = commentEnvironment(env);
   const url = new URL(request.url);
   if (url.pathname !== '/api/comments' && !url.pathname.startsWith('/api/comments/')) return null;
   if (url.pathname.startsWith('/api/comments/avatar/')) return handleCommentAvatar(request);
   try { env = await signingEnvironment(env); }
   catch { return json({error:'comments_signing_unavailable'},503); }
-  if (!coordinated && (url.pathname === '/api/comments' ||
+  const mediaRead=request.method==='GET' && url.pathname.startsWith('/api/comments/media/');
+  if (!coordinated && (url.pathname === '/api/comments' || mediaRead ||
       (url.pathname === '/api/comments/media/' && request.method === 'POST'))) {
     if (!['GET','POST','DELETE'].includes(request.method)) return json({ error:'method_not_allowed' },405,{Allow:'GET, POST, DELETE'});
     const settings = await commentSettings(env);
@@ -605,6 +646,11 @@ export async function handleCommentRequest(request, env, { coordinated = false }
       if (bytes?.error) return json({ error: bytes.error }, bytes.status);
       try { thread = JSON.parse(new TextDecoder().decode(bytes))?.thread?.trim(); }
       catch { return json({ error: 'invalid_json' }, 400); }
+    } else if(mediaRead) {
+      const path=url.pathname.slice('/api/comments/media/'.length);
+      if(!new RegExp('^'+settings.namespace+'/[0-9a-f]{24}/[0-9a-f-]{36}\\.(png|jpg|gif|webp|avif)$').test(path))return json({error:'not_found'},404);
+      thread=await mediaThread(request,env,path.split('/')[1]);
+      if(thread instanceof Response)return thread;
     } else thread = request.method === 'GET' ? url.searchParams.get('thread') : request.headers.get('x-comments-thread');
     if (!validThread(thread)) return json({ error: 'invalid_thread' }, 400);
     if (!env.REPORELAY_THREADS) return json({ error: 'comments_coordinator_unavailable' }, 503);

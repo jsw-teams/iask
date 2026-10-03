@@ -1,4 +1,20 @@
-# Changelog
+# CommentNest · 评巢 — Changelog
+
+## 202610.4 — 2026-10-03
+
+- Move all backend logic to `backend/`, the complete widget to `static/commentnest/`, and licensed sticker resources to `content/assets/`.
+- Cache fingerprinted widget resources and validated attachment bytes; coalesce signing-key reads and reuse them for five minutes to reduce DO requests.
+- Keep current Issue/comment validation ahead of attachment caches; fix session headers for cross-origin widget sign-in.
+
+- Stop serving attachments when their published comment or Issue is removed; validate the current Issue and signed reference, disable image response caching, and preview new uploads locally.
+
+- Rename the project CommentNest · 评巢 and move the complete comment widget, CSS, translations and licensed sticker gallery into this service.
+- Reduce EdgePress integration to the configured backend URL, page context and explicit opt-in loading.
+- Isolate comment layout in a responsive iframe, with automatic height, light/dark mode, improved composer, avatars and mobile spacing.
+- Support independent cross-origin deployment and a first-party GitHub login popup; transfer only a signed service session to its same-origin iframe.
+- Add a real Cloudflare Deploy button, root Worker template and descriptive setup fields.
+- Preserve existing formal signatures, media URLs, signing keys and Durable Object records; keep old test Issues isolated.
+- Add independent widget/browser tests and document privacy preference persistence in EdgePress.
 
 ## 202610.3 — 2026-10-03
 
