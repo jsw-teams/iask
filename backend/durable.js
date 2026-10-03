@@ -9,7 +9,7 @@ export async function coordinatorFetch(namespace, id, request) {
   if (!pending) {pending = new Map(); reads.set(namespace,pending);}
   const tracing=new Set(['cf-ray','traceparent','tracestate','x-request-id']);
   const key = JSON.stringify([String(id),request.method,request.url,[...request.headers].filter(([name])=>!tracing.has(name)).sort()]);
-  if (pending.has(key)) return (await pending.get(key)).clone();
+  if (pending.has(key)) return response(await pending.get(key));
   const task = (async()=>{
     for (let attempt=0;;attempt++) {
       try {
@@ -17,7 +17,9 @@ export async function coordinatorFetch(namespace, id, request) {
         // These coordinator reads already return bounded JSON or buffered images.
         // Finish the DO response before tying delivery to an individual browser.
         const body=request.method==='HEAD'||[204,205,304].includes(response.status)?null:await response.arrayBuffer();
-        return new Response(body,{status:response.status,statusText:response.statusText,headers:response.headers});
+        // Only plain bytes and header pairs cross request contexts. Response
+        // streams belong to the originating Workers request and cannot be reused.
+        return {body,status:response.status,statusText:response.statusText,headers:[...response.headers]};
       }
       catch(error) {
         const transient=error?.retryable===true || (!error?.remote && /disconnected|reset because its code was updated/i.test(error?.message || ''));
@@ -27,6 +29,7 @@ export async function coordinatorFetch(namespace, id, request) {
     }
   })();
   if (pending.size<128) pending.set(key,task);
-  try{return (await task).clone();}
+  try{return response(await task);}
   finally{if(pending.get(key)===task)pending.delete(key);}
 }
+function response(snapshot){return new Response(snapshot.body,{status:snapshot.status,statusText:snapshot.statusText,headers:snapshot.headers});}

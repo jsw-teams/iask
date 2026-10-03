@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {coordinatorFetch} from '../backend/durable.js';
+import {readFile} from 'node:fs/promises';
+import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 
 test('identical concurrent reads share one DO call, but different identities and later reads do not',async()=>{
   let calls=0;const namespace={get:()=>({fetch:async()=>{calls++;await new Promise(resolve=>setTimeout(resolve,10));return Response.json({ok:true});}})};
@@ -22,4 +24,15 @@ test('writes, overloaded reads and application errors are never retried',async()
     let calls=0;const failure=Object.assign(new Error('Disconnected'),error);const namespace={get:()=>({fetch:()=>{calls++;throw failure;}})};
     await assert.rejects(coordinatorFetch(namespace,'thread',new Request('https://iask.example/api',{method})),error=>error===failure);assert.equal(calls,1);
   }
+});
+
+test('Cloudflare concurrent request contexts receive independent response bodies from a coalesced read',async()=>{
+  const module=await readFile(new URL('../backend/durable.js',import.meta.url),'utf8');
+  const script=module+`\nlet calls=0;const namespace={get:()=>({async fetch(){calls++;await new Promise(resolve=>setTimeout(resolve,50));return Response.json({ok:true,calls});}})};export default {async fetch(){try{return await coordinatorFetch(namespace,'thread',new Request('https://internal.example/read'));}catch(error){return new Response(error.message,{status:500});}}};`;
+  const mf=new Miniflare(convertV4MiniflareOptions({name:'iask-coalescing',modules:true,script,compatibilityDate:'2026-10-03'}));
+  try {
+    await mf.ready;
+    const responses=await Promise.all(Array.from({length:8},()=>mf.dispatchFetch('https://iask.example/read')));
+    for(const response of responses){assert.equal(response.status,200);const data=await response.json();assert.equal(data.ok,true);assert.equal(data.calls,1);}
+  }finally{await mf.dispose();}
 });
