@@ -33,6 +33,7 @@ export function initializeComments(context) {
     window.addEventListener('message',event=>{
       if(event.origin===location.origin && event.source===popup && event.data?.type==='commentnest:login-ready' && loginChannel){popup.postMessage({type:'commentnest:login-start',channel:loginChannel,loading:messages.loading,error:messages.error},location.origin);return;}
       if(event.origin!==location.origin || event.source!==popup || event.data?.type!=='commentnest:login' || event.data.channel!==loginChannel)return;
+      popup.postMessage({type:'commentnest:login-ack',channel:loginChannel},location.origin);
       bearer=typeof event.data.token==='string' && event.data.token.length<=2048?event.data.token:null;
       try {bearer?sessionStorage.setItem(tokenKey,bearer):sessionStorage.removeItem(tokenKey);}catch{}
       popup=null;loginChannel=null;loadComments();

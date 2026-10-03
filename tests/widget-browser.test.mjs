@@ -104,7 +104,7 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
   await frame.locator('[data-comments-logout]').click();await frame.locator('[data-comments-signin]').waitFor({state:'visible'});assert.ok(await frame.locator('[data-comments-form]').isHidden());
   if(locale==='en' && width===360 && mode==='light') {
    const popupEvent=page.waitForEvent('popup');await frame.locator('[data-comments-login]').click();const popup=await popupEvent;
-   await frame.locator('[data-comments-form]').waitFor({state:'visible'});
+   await frame.locator('[data-comments-form]').waitFor({state:'visible'}).catch(error=>{throw new Error('Login popup failed: '+JSON.stringify({closed:popup.isClosed(),url:popup.url(),errors})+'; '+error.message);});
    assert.equal(await frame.locator('body').evaluate(()=>sessionStorage.getItem('commentnest-session')),token);
    await page.reload();await frame.locator('[data-comments-form]').waitFor({state:'visible'});
    assert.equal(await frame.locator('[data-comments-identity]').textContent(),'@RealReader');

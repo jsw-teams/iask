@@ -42,7 +42,7 @@ export async function handleServiceRequest(request, suppliedEnv) {
     const signedEnv=await signingEnvironment(env);
     const session=await commentSession(request,signedEnv);
     const token=session ? sessionToken(request) : null;
-    const script=`if(window.opener){window.opener.postMessage(${json({type:'commentnest:login',channel,token})},location.origin);window.close();}`;
+    const script=`if(window.opener){window.addEventListener('message',event=>{if(event.source===opener&&event.origin===location.origin&&event.data?.type==='commentnest:login-ack'&&event.data.channel===${json(channel)})window.close();});window.opener.postMessage(${json({type:'commentnest:login',channel,token})},location.origin);}`;
     return html('<!doctype html><meta charset="utf-8"><title>iask</title><p>You can close this window.</p><script nonce="'+nonce+'">'+script+'</script>',"default-src 'none'; script-src 'nonce-"+nonce+"'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",request);
   }
   if(url.pathname==='/commentnest/embed' || url.pathname==='/frame') {
