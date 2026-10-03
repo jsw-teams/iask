@@ -23,7 +23,7 @@ Run `npm run deploy:production` to build and deploy this site's iask instance. T
 
 When assigning a new service domain, update `COMMENTNEST_SITE_ORIGIN`, the GitHub App callback (`<service-origin>/api/comments/callback`) and the website's `backendUrl`/`moduleUrl`. The App must allow the exact callback before GitHub sign-in works. Old storage is preserved separately; changing a service origin does not migrate signed comments automatically. Internal `/commentnest/` paths and configuration prefixes remain compatible. Other operators should use the standalone Cloudflare/Vercel deployment settings instead of this site's production profile.
 
-For this deployment, reuse App `5165740`, add its private key and client secret as `COMMENTNEST_GITHUB_APP_PRIVATE_KEY` and `COMMENTNEST_GITHUB_APP_CLIENT_SECRET` Secrets on Worker `iask`, and allow `https://iask.js.gripe/api/comments/callback` in the App settings. After the domain and login are verified, enable `plugins.consent.backend.enabled` in the website's `config.yml`. No private credentials belong in website files.
+For this deployment, reuse App `5165740`, add its private key and client secret as `COMMENTNEST_GITHUB_APP_PRIVATE_KEY` and `COMMENTNEST_GITHUB_APP_CLIENT_SECRET` Secrets on Worker `iask`, and allow `https://iask.js.gripe/api/comments/callback` in the App settings. The website already enables the consent-controlled service slots; comments remain unavailable until the App credentials and callback are configured and verified. No private credentials belong in website files.
 
 ## Development
 
