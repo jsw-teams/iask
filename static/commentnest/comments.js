@@ -3,9 +3,6 @@ import {loadStickerCatalog,localizedSticker,stickerImage,insertSticker,renderSti
 export function initializeComments(context) {
   const root = document.querySelector('[data-commentnest-comments]');
   if (!root) return;
-  const consentButton = root.querySelector('[data-comments-consent-settings]');
-  if (consentButton) consentButton.hidden = true;
-
   const thread = root.dataset.commentsThread || '';
   const list = root.querySelector('[data-comments-list]');
   const form = root.querySelector('[data-comments-form]');

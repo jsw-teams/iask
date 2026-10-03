@@ -25,7 +25,9 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
    const url=new URL(route.request().url()),method=route.request().method();
    const fulfill=data=>route.fulfill({json:data});
    if(url.origin===website)return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="'+locale+'" data-theme="'+mode+'"><style>body{margin:24px}header{padding-left:130px}form{margin-left:170px}iframe{max-width:100%}section{margin:0}</style><main><section id="comments" data-comments-thread="article" data-comments-title="Article"></section></main><script type="module">import{mount}from"'+backend+'/commentnest/widget.js";mount(document.getElementById("comments"),{backendUrl:"'+backend+'"});</script></html>'});
-   if(url.origin==='https://github.com')return route.fulfill({status:303,headers:{Location:backend+'/commentnest/auth-complete?channel='+url.searchParams.get('channel')},body:''});
+   // Redirect responses bypass subsequent Playwright route handlers. A document
+   // navigation keeps the mocked provider callback inside this offline fixture.
+   if(url.origin==='https://github.com')return route.fulfill({contentType:'text/html',body:'<!doctype html><script>location.replace('+JSON.stringify(backend+'/commentnest/auth-complete?channel='+url.searchParams.get('channel'))+')</script>'});
    assert.equal(url.origin,backend);
    if(url.pathname==='/api') {
     assert.equal(url.search,'');
