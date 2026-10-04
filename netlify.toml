@@ -13,7 +13,7 @@
 
 [template.environment]
   COMMENTNEST_SITE_ORIGIN = "Exact HTTPS origin of this service"
-  COMMENTNEST_WEBSITE_ORIGIN = "Exact HTTPS origin of the embedding website"
+  COMMENTNEST_WEBSITE_ORIGIN = "Exact HTTPS origin retaining the original thread namespace"
   COMMENTNEST_REPOSITORY = "GitHub owner/repository with Issues enabled"
   COMMENTNEST_GITHUB_APP_ID = "GitHub App numeric ID"
   COMMENTNEST_GITHUB_APP_CLIENT_ID = "GitHub App client ID"

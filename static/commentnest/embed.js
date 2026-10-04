@@ -1,6 +1,7 @@
 import {loadDictionary,direction,canonicalLocale} from './i18n.js';
 import {renderWidget} from './markup.js';
 import {initializeComments} from './comments.js';
+import {embeddingWebsite} from './website.js';
 const initial=JSON.parse(document.getElementById('commentnest-context').textContent);
 async function start(context) {
 const {locale,messages}=await loadDictionary(context.locale,context.localeFiles);
@@ -40,10 +41,11 @@ resize();
 if(initial.thread)void start(initial);
 else {
   let started=false;
-  window.addEventListener('message',event=>{
+  window.addEventListener('message',async event=>{
     const data=event.data;
-    const website=(initial.websites || [{origin:initial.parent,prefix:''}]).find(site=>site.origin===event.origin);
-    if(started || event.source!==parent || !website || data?.type!=='commentnest:init' || !/^[a-f0-9]{32}$/.test(data.channel || '') || typeof data.thread!=='string' || !data.thread || (website.prefix+data.thread).length>240 || /[\x00-\x1f\x7f]/.test(data.thread) || typeof data.title!=='string' || data.title.length>500)return;
+    if(started || event.source!==parent || data?.type!=='commentnest:init')return;
+    const website=await embeddingWebsite(initial.websites || [{origin:initial.parent,prefix:''}],event.origin);
+    if(started || !website || !/^[a-f0-9]{32}$/.test(data.channel || '') || typeof data.thread!=='string' || !data.thread || (website.prefix+data.thread).length>240 || /[\x00-\x1f\x7f]/.test(data.thread) || typeof data.title!=='string' || data.title.length>500)return;
     started=true;void start({...initial,parent:website.origin,thread:website.prefix+data.thread,title:data.title,channel:data.channel,locale:canonicalLocale(data.locale),theme:['light','dark'].includes(data.theme)?data.theme:'auto'});
   });
 }

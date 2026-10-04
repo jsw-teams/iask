@@ -21,7 +21,7 @@ Each operator supplies their own exact website/service origins and GitHub App cr
 
 ## JS.GRIPE production
 
-The live introduction is https://js.gripe/iask/. The independent Cloudflare Worker is named `iask` and serves https://iask.js.gripe through the operator-managed route; APIs require that exact origin. Its workers.dev address is disabled. The `web` Worker serves only the static website. Article discussions load after visitor consent. App credentials are configured privately on iask, with the callback at https://iask.js.gripe/api/comments/callback.
+The live introduction is https://js.gripe/iask/. The independent Cloudflare Worker is named `iask` and serves https://iask.js.gripe through the operator-managed route; APIs require that exact origin. Its workers.dev address is disabled. The `web` Worker serves only the static website. Article discussions load after visitor consent. Public HTTPS websites can embed without registration; new origins receive separate automatic namespaces. Existing JS.GRIPE, Connect and Signal prefixes are retained through compatibility settings. App credentials are configured privately on iask, with the callback at https://iask.js.gripe/api/comments/callback.
 
 Run `npm run deploy:production` to build and deploy this site's iask instance. The GitHub Actions production workflow accepts an account Worker-edit Cloudflare API token stored in the repository's `CLOUDFLARE_API_TOKEN` secret. It deploys only iask and does not change website routes.
 
@@ -33,7 +33,7 @@ For this deployment, reuse App `5165740`. Its private key and client secret are 
 
 Use Node.js 22.12 or newer. Run npm ci, npm test and npm run build. Deploy with npm run deploy:cloudflare or npm run deploy:netlify. Never commit private keys, filled environment files or database URLs.
 
-The platform entries are backend/cloudflare/worker.js and backend/vercel/handler.js. Shared backend modules validate the exact Origin, signed sessions, CSRF, published thread allowlists, comment ownership, upload receipts, image bytes and request sizes. GitHub access tokens stay server-side. Errors fail closed when persistent storage is unavailable.
+The platform entries are backend/cloudflare/worker.js and backend/vercel/handler.js. Shared backend modules validate the service Origin for writes, the actual public HTTPS parent for embedding, signed sessions, CSRF, each website's published contexts, comment ownership, upload receipts, image bytes and request sizes. GitHub access tokens stay server-side. Errors fail closed when persistent storage is unavailable.
 
 The isolated widget supports 17 complete locale dictionaries, arbitrary BCP 47 language tags with fallback, RTL, light/dark mode, keyboard controls and high-contrast display. Add additional language packs as described in the language guide. It makes no requests before the website grants consent and does not poll in the background.
 
@@ -47,4 +47,4 @@ Comments accept 5,000 characters and up to four attachments. Cloudflare allows 5
 
 Project code declares MIT in package metadata. Sticker generation prompts and provenance are recorded in content/assets/commentnest/sticker-sources/generation.json.
 
-Business requests use the fixed /api endpoint with X-Service-Action, X-Service-Thread and X-Service-Resource headers. Percent-encode header values. The /frame iframe receives context through origin-checked messages, not URL parameters. Login uses a fixed /auth popup that initializes OAuth through /api headers in a first-party context. The registered GitHub callback and standard OAuth code/state parameters remain compatible; hashed assets and old signed attachment URLs retain their established contracts. Published sticker renditions are transparent 192×192 WebP files.
+Business requests use the fixed /api endpoint with X-Service-Action, X-Service-Thread, X-Service-Website and X-Service-Resource headers. Percent-encode header values. The /frame iframe receives context through origin-checked messages, not URL parameters. Login uses a fixed /auth popup that initializes OAuth through /api headers in a first-party context. The registered GitHub callback and standard OAuth code/state parameters remain compatible; hashed assets and old signed attachment URLs retain their established contracts. Published sticker renditions are transparent 192×192 WebP files.

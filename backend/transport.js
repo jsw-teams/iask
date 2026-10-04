@@ -1,3 +1,4 @@
+import {websiteOrigin} from '../static/commentnest/website.js';
 const paths={comments:'/api/comments',session:'/api/comments/session',logout:'/api/comments/logout',login:'/api/comments/login',upload:'/api/comments/media/'};
 const failure=(error,status=400)=>Response.json({error},{status,headers:{'Cache-Control':'no-store'}});
 export function headerValue(request,name,limit=240) {
@@ -15,6 +16,8 @@ export function transportRequest(request) {
   const action=request.headers.get('X-Service-Action');
   let path=paths[action];
   try {
+    const website=headerValue(request,'X-Service-Website',300);
+    if(website && !websiteOrigin(website))return failure('invalid_website');
     if(action==='avatar') {
       const id=headerValue(request,'X-Service-Resource',16);
       if(!/^[1-9]\d{0,15}$/.test(id) || !Number.isSafeInteger(Number(id)))return failure('invalid_avatar');

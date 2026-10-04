@@ -1,6 +1,6 @@
 # Independent comment service deployment
 
-Cloudflare uses `backend/cloudflare/worker.js`; Netlify uses `netlify/functions/service.mjs`, calling `backend/netlify/handler.js`; Vercel uses `api/service.js`, calling `backend/vercel/handler.js`. Shared authorization and comment logic stays under `backend/`. Exact website origins are explicitly configured. [Compare free allowances](platforms.md) before choosing a platform; Cloudflare is recommended first.
+Cloudflare uses `backend/cloudflare/worker.js`; Netlify uses `netlify/functions/service.mjs`, calling `backend/netlify/handler.js`; Vercel uses `api/service.js`, calling `backend/vercel/handler.js`. Shared authorization and comment logic stays under `backend/`. Embedding is open to public HTTPS websites. Existing origin/prefix settings preserve legacy thread identifiers; new origins receive automatic separate namespaces. [Compare free allowances](platforms.md) before choosing a platform; Cloudflare is recommended first.
 
 ## Cloudflare
 
@@ -25,7 +25,7 @@ Import the repository into Vercel, attach a PostgreSQL database through your own
 | Variable | Value |
 | --- | --- |
 | `COMMENTNEST_SITE_ORIGIN` | Exact HTTPS origin of this service |
-| `COMMENTNEST_WEBSITE_ORIGIN` | Exact HTTPS origin of the embedding website |
+| `COMMENTNEST_WEBSITE_ORIGIN` | Exact HTTPS origin that retains the original unprefixed thread namespace |
 | `COMMENTNEST_REPOSITORY` | GitHub owner/repository with Issues enabled |
 | `COMMENTNEST_GITHUB_APP_ID` | Your GitHub App ID |
 | `COMMENTNEST_GITHUB_APP_CLIENT_ID` | Your GitHub App client ID |

@@ -1,6 +1,9 @@
+let website;
+export function setWebsite(origin) {website=origin;}
 export function serviceFetch(action,{thread,resource,channel,...options}={}) {
   const headers=new Headers(options.headers);
   headers.set('X-Service-Action',action);
+  if(website)headers.set('X-Service-Website',encodeURIComponent(website));
   for(const [name,value] of [['Thread',thread],['Resource',resource],['Channel',channel]])if(value!==undefined)headers.set('X-Service-'+name,encodeURIComponent(value));
   return fetch('/api',{credentials:'same-origin',cache:'no-store',redirect:'error',...options,headers});
 }

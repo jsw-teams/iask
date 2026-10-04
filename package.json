@@ -53,7 +53,7 @@
         "description": "Exact HTTPS origin of this comment Worker; must match the GitHub App callback host."
       },
       "COMMENTNEST_WEBSITE_ORIGIN": {
-        "description": "Exact HTTPS origin of the website embedding this widget. No wildcard."
+        "description": "Exact HTTPS origin that retains the original unprefixed thread namespace; new public HTTPS sites need no registration."
       },
       "COMMENTNEST_REPOSITORY": {
         "description": "GitHub owner/repository with Issues enabled; install your own App here."

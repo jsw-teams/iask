@@ -36,10 +36,10 @@ blocks:
           integration: github-comments
 ```
 
-构建生成 `/edgepress/service-contexts.json`，内容为已发布文章及带服务插槽的页面的 `{thread,title}` 数组。不同语言共享稳定的 bundle 标识。服务只从配置的网站来源读取这份 allowlist，拒绝未知或草稿讨论。旧的 `comments` 区块、`plugins.consent.comments`、网站同域 `/api/comments` 和评论包依赖已移除。
+构建生成 `/edgepress/service-contexts.json`，内容为已发布文章及带服务插槽的页面的 `{thread,title}` 数组。不同语言共享稳定的 bundle 标识。服务从实际嵌入网站的固定路径读取这份已发布清单，拒绝未知或草稿讨论。公共 HTTPS 网站无需预先加入来源名单；新网站自动获得独立线程前缀。旧的 `comments` 区块、`plugins.consent.comments`、网站同域 `/api/comments` 和评论包依赖已移除。
 
 其他建站工具也应在明确 consent 后从服务导入 `/commentnest/widget.js`，调用 `mount(root,{backendUrl,thread,title})`，并在构建时发布同格式 allowlist。不要无条件加载 iframe、脚本、preconnect 或 GitHub 请求。变更服务地址或模块地址会使网站已保存的 consent 失效，需要访客重新选择。
 
 服务的 OAuth 回调始终登记在评论服务来源，例如 `https://comments.example.com/api/comments/callback`。网站静态部署平台与评论服务平台可以不同。
 
-首页不放服务插槽。即使访客已经同意服务，首页也不会加载评论。附加网站使用 COMMENTNEST_ADDITIONAL_WEBSITES 的精确 HTTPS 来源与独立线程前缀，详见 [中文说明](zh-CN.md)。
+首页不放服务插槽。即使访客已经同意服务，首页也不会加载评论。COMMENTNEST_ADDITIONAL_WEBSITES 只用于保留已有网站的精确来源与线程前缀，不再作为接入名单限制新网站。详见 [中文说明](zh-CN.md)。

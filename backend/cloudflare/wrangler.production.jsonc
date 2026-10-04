@@ -12,7 +12,7 @@
     "COMMENTNEST_REPOSITORY": "jsw-teams/web",
     "COMMENTNEST_SITE_ORIGIN": "https://iask.js.gripe",
     "COMMENTNEST_WEBSITE_ORIGIN": "https://js.gripe",
-    "COMMENTNEST_ADDITIONAL_WEBSITES": "[{\"origin\":\"https://connect.js.gripe\",\"prefix\":\"connect:\"}]",
+    "COMMENTNEST_ADDITIONAL_WEBSITES": "[{\"origin\":\"https://connect.js.gripe\",\"prefix\":\"connect:\"},{\"origin\":\"https://signal.js.gripe\",\"prefix\":\"signal:\"}]",
     "COMMENTNEST_GITHUB_APP_ID": "5165740",
     "COMMENTNEST_GITHUB_APP_CLIENT_ID": "Iv23liJRDmvDUn1uZeQ5"
   },

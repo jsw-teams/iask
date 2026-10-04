@@ -4,7 +4,7 @@ import {commentEnvironment} from './environment.js';
 import {signingEnvironment} from './keys.js';
 import {commentSession,sessionToken} from './auth.js';
 import {canonicalLocale,direction} from '../static/commentnest/i18n.js';
-import {configuredWebsites} from './websites.js';
+import {configuredWebsites,embeddingWebsite} from './websites.js';
 
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = value => JSON.stringify(value).replace(/</g,'\\u003c');
@@ -51,7 +51,7 @@ export async function handleServiceRequest(request, suppliedEnv) {
     const parent=origin(url.searchParams.get('parent'));
     const channel=url.searchParams.get('channel');
     const thread=url.searchParams.get('thread');
-    const embedding=websites.find(site=>site.origin===parent);
+    const embedding=await embeddingWebsite(websites,parent);
     if(url.pathname!=='/frame' && (!embedding || !/^[a-f0-9]{32}$/.test(channel || '') || !thread || thread.length>240 || /[\x00-\x1f\x7f]/.test(thread)))
       return new Response('Invalid widget context',{status:400});
     const locale=canonicalLocale(url.searchParams.get('locale'));
@@ -63,16 +63,14 @@ export async function handleServiceRequest(request, suppliedEnv) {
     const asset=name=>/^[a-z]+\.[a-f0-9]{16}\.(js|css)$/.test(manifest[name]||'')?manifest[name]:name;
     const name=new Intl.Locale(locale).language==='zh'?'我提问':'iask';
     const body='<!doctype html><html lang="'+escape(locale)+'" dir="'+direction(locale)+'" data-theme="'+theme+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+name+'</title><link rel="stylesheet" href="/commentnest/'+asset('widget.css')+'"></head><body><main id="commentnest"></main><script nonce="'+nonce+'" type="application/json" id="commentnest-context">'+json(context)+'</script><script type="module" src="/commentnest/'+asset('embed.js')+'"></script></body></html>';
-    return html(body,"default-src 'none'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors "+websites.map(site=>site.origin).join(' ')+"; base-uri 'none'; form-action 'self'",request);
+    return html(body,"default-src 'none'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors https:; base-uri 'none'; form-action 'self'",request);
   }
   const assets=env.COMMENTNEST_ASSETS || env.ASSETS;
   if(!assets)return new Response('Not found',{status:404});
   const response=await assets.fetch(request);
   const headers=new Headers(response.headers);
   headers.set('X-Content-Type-Options','nosniff');
-  const requesting=request.headers.get('Origin');
-  headers.set('Access-Control-Allow-Origin',websites.some(site=>site.origin===requesting)?requesting:website);
-  headers.set('Vary','Origin');
+  headers.set('Access-Control-Allow-Origin','*');
   headers.set('Cross-Origin-Resource-Policy','cross-origin');
   if(response.ok)headers.set('Cache-Control',/\.[a-f0-9]{16}\.(js|css|json|png|jpe?g|gif|webp|avif)$/.test(url.pathname)?'public, max-age=31536000, immutable':url.pathname.endsWith('/widget.js')?'public, max-age=60, must-revalidate':'public, max-age=300, must-revalidate');
   return new Response(response.body,{status:response.status,headers});

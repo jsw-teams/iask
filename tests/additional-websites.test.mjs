@@ -18,14 +18,14 @@ test('additional website origins and prefixes are exact, unique and bounded',()=
     [{origin:secondary,prefix:'second:'},{origin:'https://third.example',prefix:'second:'}]])
     assert.throws(()=>configuredWebsites({...env,COMMENTNEST_ADDITIONAL_WEBSITES:JSON.stringify(sites)}));
 });
-test('frame CSP and module CORS permit only configured websites, with no origin reflection',async()=>{
+test('frame CSP and public module CORS allow new HTTPS websites without registration',async()=>{
   const assets={fetch:async()=>new Response('export const ok=true')};
   const response=await handleServiceRequest(new Request(service+'/frame'),{...env,COMMENTNEST_ASSETS:assets});
-  assert.equal(response.status,200);assert.ok(response.headers.get('content-security-policy').includes('frame-ancestors '+primary+' '+secondary));
+  assert.equal(response.status,200);assert.ok(response.headers.get('content-security-policy').includes('frame-ancestors https:'));
   for(const origin of [primary,secondary,'https://attacker.example']){
     const result=await handleServiceRequest(new Request(service+'/commentnest/widget.js',{headers:{Origin:origin}}),{...env,COMMENTNEST_ASSETS:assets});
-    assert.equal(result.headers.get('access-control-allow-origin'),origin==='https://attacker.example'?primary:origin);
-    assert.equal(result.headers.get('vary'),'Origin');
+    assert.equal(result.headers.get('access-control-allow-origin'),'*');
+    assert.equal(result.headers.get('access-control-allow-credentials'),null);
   }
   const query=new URLSearchParams({parent:secondary,thread:'page:guide',title:'Guide',channel:'a'.repeat(32)});
   assert.match(await (await handleServiceRequest(new Request(service+'/commentnest/embed?'+query),env)).text(),/second:page:guide/);

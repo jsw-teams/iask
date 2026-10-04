@@ -1,6 +1,7 @@
-import {serviceFetch,imageResource} from './client.js';
+import {serviceFetch,imageResource,setWebsite} from './client.js';
 import {loadStickerCatalog,localizedSticker,stickerImage,insertSticker,renderStickerText} from './stickers.js';
 export function initializeComments(context) {
+  setWebsite(context.parent);
   const root = document.querySelector('[data-commentnest-comments]');
   if (!root) return;
   const thread = root.dataset.commentsThread || '';

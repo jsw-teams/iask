@@ -1,6 +1,6 @@
 import {requestThread} from './transport.js';
 import {coordinatorFetch} from './durable.js';
-import {configuredWebsites} from './websites.js';
+import {configuredWebsites,requestWebsite} from './websites.js';
 import { dataScope } from './scope.js';
 import { commentEnvironment } from './environment.js';
 import { signingEnvironment, storedSigningKeys } from './keys.js';
@@ -586,14 +586,16 @@ async function handleComments(request, env) {
 async function publishedThreads(request, env, selectedThread, selectedWebsite) {
   try {
     const websites=configuredWebsites(env);
-    const website=selectedWebsite || websites.find(site=>site.prefix && selectedThread?.startsWith(site.prefix)) || websites[0];
+    const website=selectedWebsite || await requestWebsite(request,env) || websites.find(site=>site.prefix && selectedThread?.startsWith(site.prefix)) || websites[0];
+    if(selectedThread && website.prefix && !selectedThread.startsWith(website.prefix))return json({error:'unknown_thread'},404);
+    if(!website.dynamic && selectedThread?.startsWith('site-') && !selectedThread.startsWith(website.prefix || '\0'))return json({error:'unknown_thread'},404);
     const address = new URL('/edgepress/service-contexts.json', website.origin);
-    // A remote allowlist is fetched only from the operator's fixed HTTPS origin.
-    // Never accept an arbitrary manifest URL supplied by a visitor.
+    // The path is fixed and carries no credentials. New websites use public HTTPS
+    // origins; Node adapters pin a checked public DNS address for the request.
     if (address.protocol !== 'https:') return json({error:'comments_unavailable'},503);
     const response = address.origin === new URL(request.url).origin && env.ASSETS
       ? await env.ASSETS.fetch(new Request(address))
-      : await fetch(address, {redirect:'manual',headers:{Accept:'application/json'}});
+      : await (website.dynamic && env.REPORELAY_FETCH_WEBSITE ? env.REPORELAY_FETCH_WEBSITE(address) : fetch(address, {redirect:'manual',headers:{Accept:'application/json'},signal:AbortSignal.timeout(5000)}));
     if (!response.ok) return json({ error: 'comments_unavailable' }, 503);
     const bytes = response.body ? await readBoundedBody(response.body, 1_000_000) : null;
     if (!bytes) return json({error:'comments_unavailable'},503);
@@ -609,7 +611,9 @@ async function publishedThread(request,env,thread) {
 }
 async function mediaThread(request,env,hash) {
   let unavailable;
-  for(const website of configuredWebsites(env)) {
+  let selected;
+  try {selected=await requestWebsite(request,env);}catch{return json({error:'invalid_website'},400);}
+  for(const website of selected?[selected]:configuredWebsites(env)) {
     const manifest=await publishedThreads(request,env,null,website);
     if(manifest instanceof Response){unavailable=manifest;continue;}
     for(const entry of manifest)if(await threadHash(entry.thread)===hash)return entry.thread;
