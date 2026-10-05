@@ -12,5 +12,5 @@ export async function writeErrorPage(output,catalog) {
   const page=notFoundPage({stylesheet:'/'+stylesheet,illustration:bear});
   await writeFile(resolve(output,'404.html'),page);
   const headers=await readFile(resolve(output,'_headers'),'utf8');
-  await writeFile(resolve(output,'_headers'),'/*\n  Cache-Control: public, max-age=0, must-revalidate\n  Content-Security-Policy: default-src \'none\'; style-src \'self\'; img-src \'self\'; base-uri \'none\'; form-action \'none\'; frame-ancestors \'none\'\n'+headers+'\n/'+stylesheet+'\n  Cache-Control: public, max-age=31536000, immutable\n');
+  await writeFile(resolve(output,'_headers'),'/*\n  Content-Security-Policy: default-src \'none\'; style-src \'self\'; img-src \'self\'; base-uri \'none\'; form-action \'none\'; frame-ancestors \'none\'\n'+headers+'\n/'+stylesheet+'\n  Cache-Control: public, max-age=31536000, immutable\n');
 }

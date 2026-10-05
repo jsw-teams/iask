@@ -16,6 +16,7 @@ test('black bear 404 pages retain HTTP status, static routing, immutable assets 
   try {
     const {catalog}=await copyWidgetAssets(dir);
     await writeErrorPage(dir,catalog);
+    const builtHeaders=await readFile(join(dir,'_headers'),'utf8');assert.doesNotMatch(builtHeaders,/^\/\*\n(?:  [^\n]+\n)*  Cache-Control:/m,'The 404 header rule must not append max-age=0 to immutable widget assets');
     const assets=fileAssets(dir);
     const env=new Proxy({COMMENTNEST_ASSETS:assets},{get(target,name){if(name==='COMMENTNEST_ASSETS')return target[name];throw new Error('Unexpected backend access');}});
     const direct=await fetchService(new Request('https://comments.example/api/comments/not-a-route'),env);
