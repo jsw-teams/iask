@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {resolve,extname,sep} from 'node:path';
 import {chromium} from 'playwright';
@@ -77,8 +77,8 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
   await page.goto(website+'/article/');
   const frame=page.frameLocator('iframe');await frame.locator('[data-comments-form]').waitFor({state:'visible'});
   assert.equal(apis,2);assert.equal(catalogs,0);assert.equal(await frame.locator('[data-comments-identity]').textContent(),'@RealReader');
-  const textarea=frame.locator('[name=body]');await textarea.fill('<img src=x onerror=alert(1)>');
-  await textarea.focus();await page.keyboard.press('Tab');assert.ok(await frame.locator('[data-comments-stickers-toggle]').evaluate(node=>node===document.activeElement));
+  const textarea=frame.locator('[name=body]'),editor=frame.locator('.comment-editor');await editor.fill('<img src=x onerror=alert(1)>');
+  await editor.focus();await page.keyboard.press('Tab');assert.ok(await frame.locator('[data-comments-stickers-toggle]').evaluate(node=>node===document.activeElement));
   await frame.locator('button[type=submit]').click();await frame.locator('.comment-item').waitFor();
   assert.equal(await frame.locator('.comment-body img').count(),0);assert.equal(await frame.locator('.comment-body').textContent(),'<img src=x onerror=alert(1)>');
   assert.equal(await frame.locator('.comment-item .comment-avatar img').count(),1);
@@ -88,21 +88,32 @@ test('independent widget: cross-origin loading, safe comments, avatars, real sti
   const layout=await frame.locator('.comment-form').evaluate(form=>({left:form.getBoundingClientRect().left,right:form.getBoundingClientRect().right,width:innerWidth}));assert.ok(layout.left<55 && layout.right<=layout.width,'Host stylesheet must not shift the widget');
   await page.waitForFunction(()=>{const iframe=document.querySelector('iframe');return parseInt(iframe.style.height)>350;});
   if(locale==='en' && width===360 && mode==='light') {
-   const remove=frame.locator('[data-comments-delete]');await textarea.fill('Keep my draft');await remove.click();assert.equal(deleted,0);
+   const remove=frame.locator('[data-comments-delete]');await editor.fill('Keep my draft');await remove.click();assert.equal(deleted,0);
    await frame.locator('.comment-actions button').last().click();await remove.click();failure=true;await remove.click();await frame.locator('[data-state=error]').waitFor();assert.equal(await frame.locator('.comment-item').count(),1);
    failure=false;await remove.click();await remove.click();await frame.locator('.comment-item').waitFor({state:'detached'});assert.equal(deleted,1);assert.equal(await textarea.inputValue(),'Keep my draft');
    await frame.locator('[data-comments-stickers-toggle]').click();await frame.locator('.comment-sticker').first().waitFor();assert.equal(await frame.locator('.comment-sticker').count(),5);assert.equal(catalogs,1);
-   await textarea.fill('Before old After');await textarea.evaluate(node=>node.setSelectionRange(7,10));
+   await editor.fill('Thanks old for the explanation.');await editor.evaluate(node=>{const range=document.createRange();range.setStart(node.firstChild,7);range.setEnd(node.firstChild,10);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);});
    await frame.locator('[data-comments-sticker-packs] button').last().click();await frame.locator('.comment-sticker').last().click();
-   assert.equal(await textarea.inputValue(),'Before :panda-perfect: After');assert.equal(uploaded,0);assert.equal(await frame.locator('.comment-attachment-preview').count(),0);
-   assert.equal(await textarea.evaluate(node=>sessionStorage.getItem('reporelay-draft:article')), 'Before :panda-perfect: After');
+   assert.equal(await textarea.inputValue(),'Thanks :panda-perfect: for the explanation.',await editor.innerHTML());assert.equal(await editor.locator('img').count(),1);assert.doesNotMatch(await editor.textContent(),/:panda-perfect:/);assert.equal(uploaded,0);assert.equal(await frame.locator('.comment-attachment-preview').count(),0);
+   assert.equal(await textarea.evaluate(node=>sessionStorage.getItem('reporelay-draft:article')), 'Thanks :panda-perfect: for the explanation.');
+   await editor.focus();await page.keyboard.press('Control+z');assert.equal(await textarea.inputValue(),'Thanks old for the explanation.');
+   await page.keyboard.press('Control+Shift+z');assert.equal(await textarea.inputValue(),'Thanks :panda-perfect: for the explanation.');
+   await page.keyboard.press('Backspace');assert.equal(await editor.locator('img').count(),0);assert.equal(await textarea.inputValue(),'Thanks  for the explanation.');
+   await page.keyboard.press('Control+z');assert.equal(await editor.locator('img').count(),1);
    await frame.locator('.comment-sticker').first().focus();await page.keyboard.press('Escape');assert.ok(await frame.locator('[data-comments-stickers]').isHidden());
-   await frame.locator('button[type=submit]').click();await frame.locator('.comment-body .comment-inline-sticker').waitFor();assert.equal(posted.body,'Before :panda-perfect: After');assert.ok(!Object.hasOwn(posted,'thread'));assert.ok(!Object.hasOwn(posted,'title'));assert.equal(posted.attachments.length,0);assert.equal(await frame.locator('.comment-body img').getAttribute('alt'),'Perfect score');
+   if(process.env.IASK_CAPTURE){await mkdir('.artifacts',{recursive:true});await frame.locator('.post-comments').screenshot({path:'.artifacts/iask-inline-editor-en.png'});}
+   await frame.locator('button[type=submit]').click();await frame.locator('.comment-body .comment-inline-sticker').waitFor();assert.equal(posted.body,'Thanks :panda-perfect: for the explanation.');assert.ok(!Object.hasOwn(posted,'thread'));assert.ok(!Object.hasOwn(posted,'title'));assert.equal(posted.attachments.length,0);assert.equal(await frame.locator('.comment-body img').getAttribute('alt'),'Perfect score');
    assert.equal(await frame.locator('.comment-eyebrow').count(),1);assert.ok(!(await frame.locator('.comment-footer').textContent()).includes('iask'));
-   await textarea.fill('Survives refresh');await page.reload();await frame.locator('[data-comments-form]').waitFor({state:'visible'});assert.equal(await textarea.inputValue(),'Survives refresh');
+   await editor.fill('');await editor.evaluate(node=>{const data=new DataTransfer();data.setData('text/plain','First\nSecond <script>bad()</script>');data.setData('text/html','<img src=x onerror=alert(1)>');node.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));});
+   assert.equal(await textarea.inputValue(),'First\nSecond <script>bad()</script>');assert.equal(await editor.locator('img,script').count(),0);
+   await editor.fill('x'.repeat(5000));await page.keyboard.type('y');assert.equal((await textarea.inputValue()).length,5000);
+   await editor.fill('Survives refresh :panda-perfect:');await page.reload();await frame.locator('[data-comments-form]').waitFor({state:'visible'});assert.equal(await textarea.inputValue(),'Survives refresh :panda-perfect:');await frame.locator('.comment-editor img').waitFor();assert.doesNotMatch(await editor.textContent(),/:panda-perfect:/);
    const heightBefore=await page.locator('iframe').getAttribute('style');
    await page.evaluate(()=>{document.querySelector('iframe').contentWindow.postMessage({type:'commentnest:login',channel:'fake',token:'forged'},'*');window.postMessage({type:'commentnest:resize',channel:'fake',height:99999},'*');});
    await page.waitForTimeout(50);assert.equal(await page.locator('iframe').getAttribute('style'),heightBefore);
+  }
+  if(process.env.IASK_CAPTURE && locale==='zh-CN' && width===360 && mode==='light'){
+   await editor.fill('谢谢你的分享！');await frame.locator('[data-comments-stickers-toggle]').click();await frame.locator('.comment-sticker').first().waitFor();await frame.locator('[data-comments-sticker-packs] button').last().click();await frame.locator('.comment-sticker').last().click();await page.keyboard.press('Escape');await mkdir('.artifacts',{recursive:true});await frame.locator('.post-comments').screenshot({path:'.artifacts/iask-inline-editor-zh.png'});
   }
   await frame.locator('[data-comments-logout]').click();await frame.locator('[data-comments-signin]').waitFor({state:'visible'});assert.ok(await frame.locator('[data-comments-form]').isHidden());
   if(locale==='en' && width===360 && mode==='light') {

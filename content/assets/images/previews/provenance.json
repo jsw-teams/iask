@@ -1,16 +1,16 @@
 [
   {
-    "file": "iask-en.webp",
-    "kind": "actual built widget, explicitly mocked anonymous comment data and demo signed-in identity; no GitHub writes",
-    "source": "iask/dist/commentnest",
+    "file": "iask-inline-editor-en.png",
+    "kind": "Actual widget with offline demonstration identities and requests; no production comments",
+    "source": "tests/widget-browser.test.mjs (IASK_CAPTURE=1)",
     "locale": "en",
-    "date": "2026-10-04"
+    "date": "2026-10-06"
   },
   {
-    "file": "iask-zh.webp",
-    "kind": "actual built widget, explicitly mocked anonymous comment data and demo signed-in identity; no GitHub writes",
-    "source": "iask/dist/commentnest",
+    "file": "iask-inline-editor-zh.png",
+    "kind": "Actual widget with offline demonstration identities and requests; no production comments",
+    "source": "tests/widget-browser.test.mjs (IASK_CAPTURE=1)",
     "locale": "zh-CN",
-    "date": "2026-10-04"
+    "date": "2026-10-06"
   }
 ]

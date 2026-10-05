@@ -1,7 +1,7 @@
 {
   "name": "@jsw-teams/iask",
   "version": "202610.4.0",
-  "description": "iask: self-hosted GitHub App comments, isolated widgets and consent-gated website integration.",
+  "description": "Self-hosted GitHub App comments with inline mascot stickers, adaptive themes and multilingual accessible widgets.",
   "type": "module",
   "license": "MIT",
   "engines": {

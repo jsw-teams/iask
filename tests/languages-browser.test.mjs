@@ -47,7 +47,7 @@ test('built language packs render regional tags, RTL, host colors and platform u
       const palette=await frame.locator('html').evaluate(node=>({ink:node.style.getPropertyValue('--ink'),canvas:node.style.getPropertyValue('--canvas'),accent:node.style.getPropertyValue('--accent')}));
       assert.equal(palette.canvas,'#111827');assert.ok(contrast(palette.ink,palette.canvas)>=4.5);assert.ok(contrast(palette.accent,palette.canvas)>=4.5,'Inaccessible host accent must fall back');
       if(locale==='ar') {
-        await frame.locator('textarea').focus();await page.keyboard.press('Tab');
+        await frame.locator('.comment-editor').focus();await page.keyboard.press('Tab');
         assert.ok(await frame.locator('[data-comments-stickers-toggle]').evaluate(node=>node===document.activeElement));
         await page.emulateMedia({forcedColors:'active'});
         assert.ok(await frame.locator('html').evaluate(()=>matchMedia('(forced-colors: active)').matches));

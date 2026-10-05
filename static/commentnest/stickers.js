@@ -23,14 +23,9 @@ export function loadStickerCatalog() {
 export function stickerImage(entry,locale,decorative=false) {
   const image=document.createElement('img');
   image.className='comment-inline-sticker';image.src=entry.src;image.alt=decorative?'':localizedSticker(entry.label,locale);
+  image.dataset.sticker=entry.token;
   image.width=64;image.height=64;image.loading='lazy';image.decoding='async';
   return image;
-}
-export function insertSticker(input,token) {
-  if(!input || input.disabled || input.readOnly)return false;
-  const start=input.selectionStart,end=input.selectionEnd;
-  if(input.maxLength>=0 && input.value.length-(end-start)+token.length>input.maxLength)return false;
-  input.setRangeText(token,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();return true;
 }
 export function renderStickerText(container,text,packs,locale) {
   const entries=new Map(packs.flatMap(pack=>pack.items.map(entry=>[entry.token,entry]))),fragment=document.createDocumentFragment();

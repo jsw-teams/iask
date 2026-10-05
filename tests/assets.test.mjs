@@ -15,6 +15,13 @@ test('built widget has a coherent fingerprinted dependency graph and immutable s
   assert.ok((await readFile(join(root,manifest['i18n.js']),'utf8')).includes(manifest['locales.js']));
   const comments=await readFile(join(root,manifest['comments.js']),'utf8');
   assert.ok(comments.includes(manifest['stickers.js']));
+  assert.ok(comments.includes(manifest['editor.js']));
+  for(const name of Object.values(manifest).filter(name=>typeof name==='string'&&name.endsWith('.js'))){
+   const source=await readFile(join(root,name),'utf8');
+   for(const match of source.matchAll(/(?:from\s*|import\s*\()['"]\.\/([^'"]+\.js)['"]/g)){
+    assert.match(match[1],/\.[a-f0-9]{16}\.js$/,name+' must import immutable dependencies');await readFile(join(root,match[1]));
+   }
+  }
   const stickers=await readFile(join(root,manifest['stickers.js']),'utf8');
   const catalogPath=stickers.match(/\/commentnest\/(stickers\/packs\.[a-f0-9]{16}\.json)/)[1];
   const catalog=JSON.parse(await readFile(join(root,catalogPath),'utf8'));

@@ -7,7 +7,9 @@ Self-hosted comments owned entirely by this project: the editor, responsive layo
 
 [中文说明：我提问](docs/zh-CN.md) | [Free-tier comparison](docs/platforms.md)
 
-![Comment editor with original mascot stickers](content/assets/images/previews/iask-en.webp)
+![Comment editor displaying a panda sticker inline with the draft](content/assets/images/previews/iask-inline-editor-en.png)
+
+Write text and choose an original black bear or panda sticker: the picture appears directly at the caret. Keep typing around it, undo an insertion or remove it with Backspace. Drafts restore the same inline pictures after a reload. Clipboard input stays plain text, and comments remain compatible with existing conversations.
 
 Each operator supplies their own exact website/service origins and GitHub App credentials. Cloudflare uses Durable Objects and is recommended for the larger usable free allowance. Netlify provisions its built-in Database automatically from the SDK dependency and applies the committed SQL migration during deploy; no external database account or manually entered database URL is required. Vercel remains an optional adapter for operators who already have a persistent PostgreSQL database, rather than a recommended one-click path. Deployment buttons create a project and still require these operator settings.
 
@@ -39,7 +41,7 @@ The isolated widget supports 17 complete locale dictionaries, arbitrary BCP 47 l
 
 ## Resources and cache
 
-static/commentnest/ owns all browser code and CSS. content/assets/commentnest/stickers/ owns original black bear and panda stickers generated with image_gen. Each pack includes hello, approval, thinking, celebration and perfect score. Picking a sticker inserts its text token at the caret; known tokens render as local images, without an upload request or attachment slot. Builds fingerprint CSS, JS, locale files, sticker catalogs and images for one-year immutable caching. The small widget loader revalidates after 60 seconds. Static files bypass backend execution on all supported platforms. API responses are no-store; public read snapshots cache internally for 15 seconds and are invalidated before writes. Attachment access retains fresh deletion checks.
+static/commentnest/ owns all browser code and CSS. content/assets/commentnest/stickers/ owns original black bear and panda stickers generated with image_gen. Each pack includes hello, approval, thinking, celebration and perfect score. The editor displays stickers inline and serializes validated catalog tokens rather than HTML, without an upload request or attachment slot. Builds fingerprint CSS, JS, locale files, sticker catalogs and images for one-year immutable caching. The small widget loader revalidates after 60 seconds. Static files bypass backend execution on all supported platforms. API responses are no-store; public read snapshots cache internally for 15 seconds and are invalidated before writes. Attachment access retains fresh deletion checks.
 
 Comments accept 5,000 characters and up to four attachments. Cloudflare allows 5 MB per file; Vercel and Netlify allow 4 MB. Sessions and upload receipts expire after one day. Drafts and the signed iframe session stay in this tab's session storage until cleared, submitted, logged out or expired.
 

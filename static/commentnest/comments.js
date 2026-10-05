@@ -1,5 +1,6 @@
 import {serviceFetch,imageResource,setWebsite} from './client.js';
-import {loadStickerCatalog,localizedSticker,stickerImage,insertSticker,renderStickerText} from './stickers.js';
+import {loadStickerCatalog,localizedSticker,stickerImage,renderStickerText} from './stickers.js';
+import {mountCommentEditor} from './editor.js';
 export function initializeComments(context) {
   setWebsite(context.parent);
   const root = document.querySelector('[data-commentnest-comments]');
@@ -45,6 +46,7 @@ export function initializeComments(context) {
   // Keep the persisted draft key stable across the public project rename.
   const draftKey = 'reporelay-draft:' + thread;
   try { if (bodyInput) bodyInput.value = sessionStorage.getItem(draftKey) || ''; } catch {}
+  const bodyEditor=bodyInput?mountCommentEditor(bodyInput,context.locale):null;
   bodyInput?.addEventListener('input', () => {
     try { sessionStorage.setItem(draftKey, bodyInput.value); } catch {}
   });
@@ -214,7 +216,7 @@ export function initializeComments(context) {
           const data=await requestJson('comments',{method:'DELETE',headers:{'Content-Type':'application/json','X-Comments-CSRF':session.csrf},body:JSON.stringify({commentId:comment.id})});
           if (!data?.ok) throw new Error('comments_request_failed');
           item.remove();setStatus(messages.deleted);
-          (list.querySelector('[data-comments-delete]') || (!form?.hidden ? bodyInput : logout))?.focus();
+          (list.querySelector('[data-comments-delete]') || (!form?.hidden ? bodyEditor : logout))?.focus();
         } catch(error) {
           reset();
           if (['login_required','invalid_csrf'].includes(error.message)) {
@@ -290,7 +292,7 @@ export function initializeComments(context) {
       button.setAttribute('aria-label',localized(entry.label));button.title=localized(entry.label);
       button.append(stickerImage(entry,context.locale,true));
       button.addEventListener('click',()=>{
-        if(session?.user && !submit.disabled)insertSticker(bodyInput,entry.token);
+        if(session?.user && !submit.disabled)bodyEditor?.insert(entry);
       });
       stickerGrid.append(button);
     }
@@ -301,6 +303,7 @@ export function initializeComments(context) {
     if(stickerPanel.hidden)return;
     try {
       const packs=await loadStickerCatalog();
+      bodyEditor?.useCatalog(packs);
       if(!stickerPacks.children.length) {
         for(const pack of packs) {
           const button=document.createElement('button');button.type='button';button.className='comment-secondary';
@@ -350,6 +353,7 @@ export function initializeComments(context) {
     if (attachmentInput) attachmentInput.disabled = true;
     if (stickerToggle) stickerToggle.disabled = true;
     setStatus(messages.loading);
+    bodyEditor?.setLocked(true);
     try {
       const data = await requestJson('comments', {
         method: 'POST',
@@ -361,7 +365,7 @@ export function initializeComments(context) {
         })
       });
       if (data?.comment && list) list.append(renderComment(data.comment));
-      if (bodyInput) bodyInput.value = '';
+      bodyEditor?.setValue('');
       for(const attachment of uploadedAttachments)if(attachment.previewUrl)URL.revokeObjectURL(attachment.previewUrl);
       uploadedAttachments = [];
       renderPendingAttachments();
@@ -385,6 +389,7 @@ export function initializeComments(context) {
       if (attachmentInput) attachmentInput.disabled = false;
       if (stickerToggle) stickerToggle.disabled = false;
       if (submit) submit.disabled = false;
+      bodyEditor?.setLocked(false);
     }
   });
 

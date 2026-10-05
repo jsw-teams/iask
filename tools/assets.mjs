@@ -35,7 +35,7 @@ export async function copyWidgetAssets(destination) {
     await writeFile(resolve(target,'languages',name),source);localeFiles[file.slice(0,-5)]='languages/'+name;
   }
   const manifest={};
-  for(const file of ['website.js','locales.js','i18n.js','palette.js','markup.js','stickers.js','client.js','comments.js','widget.js','embed.js','widget.css']){
+  for(const file of ['website.js','locales.js','i18n.js','palette.js','markup.js','stickers.js','editor.js','client.js','comments.js','widget.js','embed.js','widget.css']){
     let text=await readFile(resolve(target,file),'utf8');
     for(const [name,hashed] of Object.entries(manifest))text=text.replaceAll('./'+name,'./'+hashed);
     text=text.replaceAll('/commentnest/stickers/packs.json','/commentnest/'+catalogName);
