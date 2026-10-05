@@ -21,7 +21,9 @@ test('black bear 404 pages retain HTTP status, static routing, immutable assets 
     const direct=await fetchService(new Request('https://comments.example/api/comments/not-a-route'),env);
     assert.equal(direct.status,404);
     assert.equal(direct.headers.get('cache-control'),'no-store');
-    assert((await direct.text()).includes('黑熊'));
+    const directHtml=await direct.text();
+    assert.match(directHtml,/<html lang="en">/);
+    assert.match(directHtml,/Where there's a will, there's a way/);
     const head=await fetchService(new Request('https://comments.example/missing',{method:'HEAD'}),env);
     assert.equal(head.status,404);assert.equal(await head.text(),'');
     const config=JSON.parse(await readFile(new URL('../backend/cloudflare/wrangler.production.jsonc',import.meta.url),'utf8'));
@@ -30,8 +32,7 @@ test('black bear 404 pages retain HTTP status, static routing, immutable assets 
     const response=await mf.dispatchFetch('https://comments.example/this-page-is-missing');
     assert.equal(response.status,404);
     const html=await response.text();
-    assert(html.includes('这里没有你想找的东西'));
-    assert(!html.includes('__BLACKBEAR_IMAGE__'));
+    assert(html.includes('Resource not found'));
     for(const path of [html.match(/href="(\/not-found\.[^"]+\.css)"/)[1],html.match(/src="([^"]+blackbear-think\.[^"]+\.webp)"/)[1]]) {
       const asset=await mf.dispatchFetch('https://comments.example'+path);
       assert.equal(asset.status,200);
@@ -47,6 +48,8 @@ test('black bear 404 pages retain HTTP status, static routing, immutable assets 
       const navigation=await page.goto('https://comments.example/this-page-is-missing');
       assert.equal(navigation.status(),404);
       assert.equal(await page.locator('main h1').count(),1);
+      assert.equal(await page.locator('html').getAttribute('lang'),'en');
+      assert.match(await page.locator('.proverb').textContent(),/Where there's a will, there's a way/);
       assert(await page.locator('.bear-scene img').evaluate(image=>image.complete&&image.naturalWidth>0));
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       assert(await page.locator('figcaption').evaluate(node=>parseFloat(getComputedStyle(node).fontSize)>=14));
@@ -55,5 +58,33 @@ test('black bear 404 pages retain HTTP status, static routing, immutable assets 
       if(width===390)await page.screenshot({path:join(tmpdir(),'iask-404-'+colorScheme+'.png'),fullPage:true});
       await page.close();
     }
+    for(const colorScheme of ['light','dark']) {
+      const page=await browser.newPage({viewport:{width:320,height:844},colorScheme});
+      page.on('request',request=>assert.equal(request.url(),'https://comments.example/missing'));
+      await page.route('https://comments.example/missing',async route=>{
+        const response=await fetchService(new Request(route.request().url()),{});
+        await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});
+      });
+      assert.equal((await page.goto('https://comments.example/missing')).status(),404);
+      assert(await page.locator('.bear-scene svg').isVisible());
+      assert.equal(await page.locator('main').evaluate(node=>getComputedStyle(node).display),'grid');
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+      await page.close();
+    }
   }finally{await browser?.close();await mf?.dispose();await rm(dir,{recursive:true});}
+});
+
+test('missing or failed asset bindings retain the illustrated English fallback without reflecting request input',async()=>{
+  for(const env of [{},{ASSETS:{fetch:async()=>{throw new Error('offline');}}}]) {
+    const response=await fetchService(new Request('https://comments.example/missing?private=do-not-display'),env);
+    assert.equal(response.status,404);
+    assert.equal(response.headers.get('Cache-Control'),'no-store');
+    assert.match(response.headers.get('Content-Security-Policy'),/style-src 'self' 'sha256-/);
+    assert.doesNotMatch(response.headers.get('Content-Security-Policy'),/unsafe-inline/);
+    const html=await response.text();
+    assert.match(html,/<html lang="en">/);
+    assert.match(html,/<svg[^>]+role="img"/);
+    assert.match(html,/Where there's a will, there's a way/);
+    assert.doesNotMatch(html,/do-not-display|<script/);
+  }
 });
