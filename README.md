@@ -7,7 +7,7 @@ Self-hosted comments owned entirely by this project: the editor, responsive layo
 
 [中文说明：我提问](docs/zh-CN.md) | [Free-tier comparison](docs/platforms.md)
 
-![Comment editor displaying a panda sticker inline with the draft](content/assets/images/previews/iask-inline-editor-en.png)
+![Write, insert an inline sticker and see the published discussion](content/assets/images/previews/iask-workflow-en.3677e05402fbabef.gif)
 
 Write text and choose an original black bear or panda sticker: the picture appears directly at the caret. Keep typing around it, undo an insertion or remove it with Backspace. Drafts restore the same inline pictures after a reload. Clipboard input stays plain text, and comments remain compatible with existing conversations.
 
