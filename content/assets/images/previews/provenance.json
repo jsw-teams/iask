@@ -12,5 +12,21 @@
     "source": "tests/widget-browser.test.mjs (IASK_CAPTURE=1)",
     "locale": "zh-CN",
     "date": "2026-10-06"
+  },
+  {
+    "file": "iask-workflow-en.1bf8aec37dc8f9cb.gif",
+    "kind": "FFmpeg recording of an isolated WSL2 desktop; actual Chromium interface; isolated service fixtures",
+    "source": "web/js.gripe/tools/recordings/capture-project-demos.mjs",
+    "date": "2026-10-07",
+    "duration": 17880,
+    "bytes": 255542
+  },
+  {
+    "file": "iask-workflow-zh.9fc8bb73f6746d70.gif",
+    "kind": "FFmpeg recording of an isolated WSL2 desktop; actual Chromium interface; isolated service fixtures",
+    "source": "web/js.gripe/tools/recordings/capture-project-demos.mjs",
+    "date": "2026-10-07",
+    "duration": 15800,
+    "bytes": 203221
   }
 ]
