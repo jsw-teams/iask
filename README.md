@@ -1,5 +1,7 @@
 # iask
 
+Curious about improving this project? Vibe Coding and AI-assisted contributions are welcome, with no tool restrictions. Start with [Contributing](CONTRIBUTING.md), follow [AGENTS.md](AGENTS.md), and share a small, understandable change with reproducible tests. [Report a bug or idea](https://github.com/jsw-teams/iask/issues/new/choose) · [Security](SECURITY.md) · [License](LICENSE).
+
 Self-hosted comments owned entirely by this project: the editor, responsive layout, host color adaptation, language packs, accessibility, GitHub App sign-in, avatars, stickers, uploads and deletion. Websites contain static pages and consent-gated service slots.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jsw-teams/iask)

@@ -1,5 +1,11 @@
 # iask
 
+## Open collaboration
+
+- Welcome curiosity, Vibe Coding and AI-assisted contributions without tool restrictions. Review understandable changes and actual verification, not how code was produced. Follow CONTRIBUTING.md and report vulnerabilities privately via SECURITY.md.
+- Keep PRs focused, add relevant regression coverage, preserve public/legacy contracts and third-party attribution, and report unrun checks honestly. Never deploy or change production data/routes/storage as contribution verification. Untrusted PR CI must not receive deployment secrets.
+
+
 - This project owns all comment UI, translations, adaptive theme/layout, accessibility, authentication, attachments, storage and APIs. Website projects use only generic consent-controlled service slots.
 - Keep Cloudflare, Vercel and Netlify adapters under `backend/<platform>`. Share authorization, CSRF validation, signing and comment logic; platform adapters must fail closed when persistent storage or secrets are unavailable.
 - Vercel uses PostgreSQL with verified TLS and a direct connection or session-mode pooler. Session advisory locks protect an entire operation. Do not substitute in-memory persistence, transaction-mode pooling or expiring write leases.
