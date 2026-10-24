@@ -21,7 +21,7 @@ test('Cloudflare asset routing bypasses the function for roots, static assets an
     await writeFile(join(dir,'404.html'),'<!doctype html><title>404</title>Not found');
     await writeFile(join(dir,'widget.0123456789abcdef.js'),'export const staticAsset=true;');
     await writeFile(join(dir,'_headers'),'/widget.0123456789abcdef.js\n  Cache-Control: public, max-age=31536000, immutable\n');
-    const config=JSON.parse(await readFile(new URL('../backend/cloudflare/wrangler.production.jsonc',import.meta.url),'utf8'));
+    const config=JSON.parse(await readFile(new URL('../wrangler.jsonc',import.meta.url),'utf8'));
     mf=new Miniflare(convertV4MiniflareOptions({name:'routing-test',modules:true,script:"export default{fetch(){return new Response('function invoked',{headers:{'X-Function-Invoked':'yes'}})}};",compatibilityDate:config.compatibility_date,
       assets:{directory:dir,run_worker_first:config.assets.run_worker_first,routerConfig:{has_user_worker:true},assetConfig:{not_found_handling:'404-page',html_handling:'auto-trailing-slash'}}}));
     for(const path of ['/','/?probe=yes','/.env','/.git/config','/wp-admin','/commentnest/missing.js']) {

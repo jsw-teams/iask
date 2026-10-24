@@ -6,7 +6,7 @@ Cloudflare uses `backend/cloudflare/worker.js`; Netlify uses `netlify/functions/
 
 Use the README deployment button, or run `npm ci`, `npm test`, then `npm run deploy:cloudflare`. Wrangler provisions the `CommentCoordinator` Durable Object declared in `wrangler.jsonc`. Fill the public settings in that file and supply the private key and client secret through Cloudflare Secrets. Preserve the existing namespace on upgrades.
 
-For JS.GRIPE, use `npm run deploy:production`: its production profile sets the website origin, service origin and repository. Existing App Secrets remain on the Worker. If a binding already exists, edit it rather than adding the same name; a dashboard version must be deployed before its changes are active.
+Operator deployments are maintained in the separate web/api.js.gripe project, using this package’s exported platform and asset APIs. Generic self-hosted deployments continue to use the sample configuration below.
 
 The service root and unrelated paths return a static 404. An explicit `run_worker_first` route list sends only comment endpoints and embed/auth pages to service code, while `404-page` handles asset misses. Routing regression tests check both navigation and non-navigation probes without invoking a function. Legitimate API calls still invoke the Worker; requests matching an API route are rejected early when invalid. See [Cloudflare static routing](https://developers.cloudflare.com/workers/static-assets/binding/) and [static asset billing](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/).
 

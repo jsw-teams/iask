@@ -27,7 +27,7 @@ test('black bear 404 pages retain HTTP status, static routing, immutable assets 
     assert.match(directHtml,/Where there's a will, there's a way/);
     const head=await fetchService(new Request('https://comments.example/missing',{method:'HEAD'}),env);
     assert.equal(head.status,404);assert.equal(await head.text(),'');
-    const config=JSON.parse(await readFile(new URL('../backend/cloudflare/wrangler.production.jsonc',import.meta.url),'utf8'));
+    const config=JSON.parse(await readFile(new URL('../wrangler.jsonc',import.meta.url),'utf8'));
     mf=new Miniflare(convertV4MiniflareOptions({name:'bear-404',modules:true,script:"export default{fetch(){return new Response('Unexpected function',{status:500})}}",compatibilityDate:config.compatibility_date,
       assets:{directory:dir,run_worker_first:config.assets.run_worker_first,routerConfig:{has_user_worker:true},assetConfig:{not_found_handling:'404-page',html_handling:'auto-trailing-slash'}}}));
     const response=await mf.dispatchFetch('https://comments.example/this-page-is-missing');

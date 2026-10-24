@@ -1,6 +1,6 @@
 {
   "name": "@jsw-teams/iask",
-  "version": "202610.4.0",
+  "version": "202610.4.1",
   "description": "Self-hosted GitHub App comments with inline mascot stickers, adaptive themes and multilingual accessible widgets.",
   "type": "module",
   "license": "MIT",
@@ -10,6 +10,11 @@
   "exports": {
     ".": "./backend/index.js",
     "./auth": "./backend/auth.js",
+    "./service": "./backend/handler.js",
+    "./cloudflare": "./backend/cloudflare/worker.js",
+    "./netlify": "./backend/netlify/handler.js",
+    "./vercel": "./backend/vercel/handler.js",
+    "./error-page": "./tools/error-page.mjs",
     "./build": "./tools/assets.mjs"
   },
   "files": [
@@ -36,7 +41,6 @@
     "deploy": "npm run build && wrangler deploy",
     "deploy:cloudflare": "npm run build && wrangler deploy",
     "deploy:vercel": "npm run build && npx vercel deploy --prod",
-    "deploy:production": "npm run build && wrangler deploy --config backend/cloudflare/wrangler.production.jsonc",
     "deploy:netlify": "npm run build && npx netlify-cli deploy --prod"
   },
   "bin": {
