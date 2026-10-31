@@ -1,0 +1,22 @@
+name: One-time dependency-fix runtime verification
+on:
+  push:
+    branches: [fix/security-audit-20261031]
+    paths: ['.github/workflows/verify-security-fix.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm audit --package-lock-only --audit-level=high
+      - run: npm test
+      - run: npm run build
