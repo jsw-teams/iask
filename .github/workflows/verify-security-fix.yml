@@ -18,5 +18,7 @@ jobs:
           node-version: '24'
       - run: npm ci --no-audit --no-fund
       - run: npm audit --package-lock-only --audit-level=high
+      - name: Install Playwright Chromium for browser regression tests
+        run: npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run build
